@@ -102,12 +102,8 @@ class MainWindow: Window, @unchecked Sendable {
 
         setupWindow()
         setupContent()
-        applyAppearance()
-        startObserving()
 
-        if navigationView.menuItems.count > 0 {
-            navigationView.selectedItem = navigationView.menuItems[0]
-        }
+        startObserving()
     }
  
     /// 配置窗口基本属性
@@ -201,6 +197,9 @@ class MainWindow: Window, @unchecked Sendable {
             for item in module.registerNavigationViewItems(in: context) {
                 navigationView.menuItems.append(item)
             }
+        }
+        if navigationContentFrame.content == nil && navigationView.menuItems.count > 0 {
+            navigationView.selectedItem = navigationView.menuItems[0]
         }
     }
     
