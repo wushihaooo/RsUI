@@ -18,7 +18,7 @@ public extension Module {
         return []
     }
 
-    func makeNavigationTarget(for selectedItemTag: Any) -> (header: String, page: AppPage)? {
+    func makeNavigationTarget(for selectedItemTag: Any) -> (header: UIElement, page: AppPage)? {
         return nil
     }
 
