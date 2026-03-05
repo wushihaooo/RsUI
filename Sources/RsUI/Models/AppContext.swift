@@ -21,8 +21,8 @@ public class AppContext {
             preferences.save(language)
         }
     }
-
-    let bundle: Bundle
+    public let bundle: Bundle
+    
     var modules: [any Module] = []
 
     init(_ group: String, _ product: String, _ bundle: Bundle) {
@@ -31,7 +31,6 @@ public class AppContext {
         preferences = JsonPreferences.makeAppStandard(group: group, product: product)
         theme = preferences.load(for: AppTheme.self)
         language = preferences.load(for: AppLanguage.self)
-    
         self.bundle = bundle
 
         if Application.current.requestedTheme != theme.applicationTheme {
