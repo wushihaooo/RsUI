@@ -19,9 +19,6 @@ class SettingsPage: AppPage {
     init() {
         setupUI()
     }
-    deinit {
-        print("###SettingsPage deinit")
-    }
     
     /// 初始化用户界面，包括主题和语言选择器
     private func setupUI() {
