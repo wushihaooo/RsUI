@@ -1,4 +1,4 @@
-import Foundation
+﻿import Foundation
 import WindowsFoundation
 import UWP
 import WinUI
@@ -86,5 +86,12 @@ final class ArbitaryModule: Module {
             )
 
         return buildSettingsCard(title: "Arbitrary Settings", content: [metadataRow])
+    }
+
+    func makeStatusItem() -> UIElement? {
+        let now = Date()
+        let tb = TextBlock()
+        tb.text = now.description
+        return tb
     }
 }

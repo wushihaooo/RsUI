@@ -77,6 +77,10 @@ class MainWindow: Window {
 
         return bar
     } ()
+    private lazy var statusBar = {
+        let bar = StatusBar()
+        return bar
+    } ()
     private lazy var navigationContentFrame = Frame()
     private lazy var navigationView = {
         let nav = NavigationView()
@@ -143,6 +147,10 @@ class MainWindow: Window {
         let contentRowDef = RowDefinition()
         contentRowDef.height = GridLength(value: 1, gridUnitType: .star)
         root.rowDefinitions.append(contentRowDef)
+
+        let statusRowDef = RowDefinition()
+        statusRowDef.height = GridLength(value: 24, gridUnitType: .pixel)
+        root.rowDefinitions.append(statusRowDef)
         
         root.children.append(titleBar)
         try? Grid.setRow(titleBar, 0)
@@ -170,6 +178,9 @@ class MainWindow: Window {
         }
         root.children.append(navigationView)
         try? Grid.setRow(navigationView, 1)
+
+        root.children.append(statusBar.view)
+        try? Grid.setRow(statusBar.view, 2)
 
         self.content = root
     }
