@@ -70,6 +70,31 @@ class MainWindow: Window {
             bar.content = searchBox
         }
 
+        // 设置控制面板显示按钮
+        let toggleButton = Button()
+        toggleButton.width = 40
+        toggleButton.height = 32
+        toggleButton.horizontalAlignment = .right
+        toggleButton.background = SolidColorBrush(Color(a: 0, r: 0, g: 0, b: 0))
+        toggleButton.borderThickness = Thickness(left: 0, top: 0, right: 0, bottom: 0)
+        toggleButton.content = {
+            let viewBox = Viewbox()
+            let icon = FontIcon()
+            icon.fontSize = 32
+            icon.glyph = "\u{E746}"
+            viewBox.child = icon
+            return viewBox
+        } ()
+        toggleButton.click.addHandler { [weak self] _, _ in
+            guard let self else { return }
+            self.viewModel.isControlPanelVisible.toggle()
+            self.controlPanel.view.visibility = 
+                self.viewModel.isControlPanelVisible ? .visible : .collapsed
+            self.
+        }
+        bar.rightHeader = toggleButton
+        
+
         bar.paneToggleRequested.addHandler { [weak self] _, _ in
             guard let self else { return }
             self.navigationView.isPaneOpen.toggle()
@@ -151,15 +176,18 @@ class MainWindow: Window {
         try? Grid.setRow(titleBar, 0)
         try? setTitleBar(titleBar)
         
-        // 设置中间主要区域的网格布局
+        // 设置中间主要区域的网格布局的列定义
         let naviColDef = ColumnDefinition()
-        naviColDef.width = GridLength(value: 1, gridUnitType: .star)
+        naviColDef.width = GridLength(value: 3, gridUnitType: .star)
         mainGrid.columnDefinitions.append(naviColDef)
 
         let controlPanelColDef = ColumnDefinition()
         controlPanelColDef.maxWidth = 300
-        controlPanelColDef.width = GridLength(value: 1, gridUnitType: .auto)
+        controlPanelColDef.width = GridLength(value: 1, gridUnitType: .star)
+        self.controlPanelColDef = controlPanelColDef
         mainGrid.columnDefinitions.append(controlPanelColDef)
+        controlPanel.view.visibility = self.viewModel.isControlPanelVisible ? .visible : .collapsed
+
 
         navigationView.selectionChanged.addHandler { [weak self] view, args in
             guard let self, let view, let args else { return }

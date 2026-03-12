@@ -7,6 +7,7 @@ class ControlPanel {
     private let rootGrid = Grid()
     private var observingTask: Task<Void, Never>? = nil
     private var tabView = TabView()
+    private var pivot = Pivot()
 
     var view: Border { rootBorder }
 
@@ -24,22 +25,16 @@ class ControlPanel {
         rootBorder.borderThickness = Thickness(left: 1, top: 1, right: 1, bottom: 1)
         rootBorder.padding = Thickness(left: 12, top: 0, right: 12, bottom: 0)
 
-        // 为 tabview 添加
-        let tab = TabViewItem()
-        tab.header = "欢迎"
-        tab.isClosable = false
-
-        let text = TextBlock()
-        text.text = "这是首页"
-
-        let container = Grid()
-        container.children.append(text)
-
-        tab.content = container
-        tabView.tabItems.append(tab)
-        tabView.selectedItem = tab
+        for i in 0..<3 {
+            let item = PivotItem()
+            item.header = "pivot\(i)"
+            let tb = TextBlock()
+            tb.text = "这是首页"
+            item.content = tb
+            self.pivot.items.append(item)
+        }
         
-        rootBorder.child = self.tabView
+        rootBorder.child = self.pivot
     }
 
     private func applyTheme() {
