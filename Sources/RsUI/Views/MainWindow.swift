@@ -77,6 +77,7 @@ class MainWindow: Window {
 
         return bar
     } ()
+    private lazy var mainGrid = Grid()
     private lazy var navigationContentFrame = Frame()
     private lazy var navigationView = {
         let nav = NavigationView()
@@ -96,6 +97,8 @@ class MainWindow: Window {
         return nav
     } ()
     private var displayingPage: AppPage? = nil
+
+    private lazy var controlPanel = ControlPanel()
 
     // MARK: - 初始化
     override init() {
@@ -148,6 +151,16 @@ class MainWindow: Window {
         try? Grid.setRow(titleBar, 0)
         try? setTitleBar(titleBar)
         
+        // 设置中间主要区域的网格布局
+        let naviColDef = ColumnDefinition()
+        naviColDef.width = GridLength(value: 1, gridUnitType: .star)
+        mainGrid.columnDefinitions.append(naviColDef)
+
+        let controlPanelColDef = ColumnDefinition()
+        controlPanelColDef.maxWidth = 300
+        controlPanelColDef.width = GridLength(value: 1, gridUnitType: .auto)
+        mainGrid.columnDefinitions.append(controlPanelColDef)
+
         navigationView.selectionChanged.addHandler { [weak self] view, args in
             guard let self, let view, let args else { return }
 
@@ -168,8 +181,14 @@ class MainWindow: Window {
                 }
             }
         }
-        root.children.append(navigationView)
-        try? Grid.setRow(navigationView, 1)
+        mainGrid.children.append(navigationView)
+        try? Grid.setColumn(navigationView, 0)
+
+        mainGrid.children.append(controlPanel.view)
+        try? Grid.setColumn(controlPanel.view, 1)
+
+        root.children.append(mainGrid)
+        try? Grid.setRow(mainGrid, 1)
 
         self.content = root
     }
