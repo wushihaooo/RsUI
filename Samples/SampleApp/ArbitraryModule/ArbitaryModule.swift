@@ -92,6 +92,9 @@ final class ArbitaryModule: Module {
         let now = Date()
         let tb = TextBlock()
         tb.text = now.description
+    func makeControlPanelTarget() -> UIElement? {
+        let tb = TextBlock()
+        tb.text = "Arbitary Module Control Panel"
         return tb
     }
 }

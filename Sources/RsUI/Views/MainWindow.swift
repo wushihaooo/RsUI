@@ -161,12 +161,12 @@ class MainWindow: Window {
         
         // 设置中间主要区域的网格布局
         let naviColDef = ColumnDefinition()
-        naviColDef.width = GridLength(value: 1, gridUnitType: .star)
+        naviColDef.width = GridLength(value: 3, gridUnitType: .star)
         mainGrid.columnDefinitions.append(naviColDef)
 
         let controlPanelColDef = ColumnDefinition()
-        controlPanelColDef.maxWidth = 300
-        controlPanelColDef.width = GridLength(value: 1, gridUnitType: .auto)
+        // controlPanelColDef.maxWidth = 300
+        controlPanelColDef.width = GridLength(value: 1, gridUnitType: .star)
         mainGrid.columnDefinitions.append(controlPanelColDef)
 
         navigationView.selectionChanged.addHandler { [weak self] view, args in
@@ -177,6 +177,8 @@ class MainWindow: Window {
                 let page = SettingsPage()
                 self.navigationContentFrame.content = page.rootView
                 self.displayingPage = page
+                // 更新控制面板内容
+                self.updateControlPanelContent(for: nil, isSettings: true)
             } else if let item = args.selectedItem as? NavigationViewItem, let tag = item.tag {
                 let context = WindowContext(hwnd: self.appWindow)
                 for module in App.context.modules {
@@ -184,6 +186,8 @@ class MainWindow: Window {
                         view.header = target.header
                         self.navigationContentFrame.content = target.page.rootView
                         self.displayingPage = target.page
+                        // 更新控制面板内容
+                        self.updateControlPanelContent(for: tag, isSettings: false)
                         break
                     }
                 }
@@ -202,6 +206,45 @@ class MainWindow: Window {
         try? Grid.setRow(statusBar.view, 2)
 
         self.content = root
+
+        // 初始化控制面板内容
+        if navigationView.menuItems.count > 0 {
+            if let firstItem = navigationView.menuItems[0] as? NavigationViewItem, let tag = firstItem.tag {
+                updateControlPanelContent(for: tag, isSettings: false)
+            
+            }
+        }
+    }
+
+    /// 更新控制面板内容
+    private func updateControlPanelContent(for tag: Any?, isSettings: Bool) {
+        var controlPanelItems: [UIElement] = []
+        let context = WindowContext(hwnd: self.appWindow)
+        
+        if isSettings {
+            // 设置页面不需要control-panel中的内容
+            
+        } else if let tag = tag {
+            // 为普通页面添加控制面板内容
+            for module in App.context.modules {
+                if moduleMatchesTag(module, tag: tag, context: context) {
+                    if let card = module.makeControlPanelTarget() {
+                        controlPanelItems.append(card)
+                    }
+                }
+            }
+        }
+        
+        controlPanel.updateContent(controlPanelItems)
+    }
+
+    private func moduleMatchesTag(_ module: Module, tag: Any, context: WindowContext) -> Bool {
+        if let uri = tag as? Uri, uri.host == module.id {
+            return true
+        }
+
+        // Fallback for modules that don't use rs://<id> tags.
+        return module.makeNavigationTarget(for: tag, in: context) != nil
     }
 
     private func setupModules() {

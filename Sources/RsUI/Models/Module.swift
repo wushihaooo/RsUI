@@ -15,6 +15,8 @@ public protocol Module : ExpressibleByEmptyLiteral {
     func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> (header: UIElement?, page: AppPage)?
     func makeSettingsCard() -> UIElement?
     func makeStatusItem() -> UIElement?
+    
+    func makeControlPanelTarget() -> UIElement?
 }
 
 public extension Module {
@@ -34,6 +36,7 @@ public extension Module {
     }
 
     func makeStatusItem() -> UIElement? {
+    func makeControlPanelTarget() -> UIElement? {
         return nil
     }
 }
