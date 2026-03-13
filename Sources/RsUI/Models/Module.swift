@@ -36,6 +36,9 @@ public extension Module {
     }
 
     func makeStatusItem() -> UIElement? {
+        return nil
+    }
+    
     func makeControlPanelTarget() -> UIElement? {
         return nil
     }
