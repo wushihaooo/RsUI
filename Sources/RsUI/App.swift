@@ -32,7 +32,7 @@ open class App: SwiftApplication {
         try! mainWindow.activate()
     }
 
-    override open func onShutdown() {
+    override open func onShutdown(exitCode: Int32) {
         App.context = nil
     }
 }
