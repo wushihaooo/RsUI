@@ -5,7 +5,28 @@ import RsUI
 
 /// 演示页面，只有展示各种静态信息，表示使用自定义的NavigationViewItem可以工作正常
 final class ArbitaryPage: View {
-    var body: WinUI.UIElement {
+    var header: Any? {
+        let container = StackPanel()
+        container.padding = Thickness(left: 0, top: 0, right: 0, bottom: 32)
+        
+        // 欢迎标题
+        let titleBlock = TextBlock()
+        titleBlock.text = tr("Arbitrary Page")
+        container.children.append(titleBlock)
+        
+        // 副标题
+        let subtitleBlock = TextBlock()
+        subtitleBlock.text = tr("A demonstration page with various UI components")
+        subtitleBlock.fontSize = 14
+        subtitleBlock.foreground = SolidColorBrush(App.context.theme.isDark ? 
+            UWP.Color(a: 255, r: 180, g: 180, b: 180) : 
+            UWP.Color(a: 255, r: 100, g: 100, b: 100))
+        container.children.append(subtitleBlock)
+
+        return container
+    }
+
+    var content: WinUI.UIElement {
         let root = WinUI.Grid()
         root.padding = Thickness(left: 40, top: 0, right: 40, bottom: 32)
         

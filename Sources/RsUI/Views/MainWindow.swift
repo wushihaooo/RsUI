@@ -152,17 +152,17 @@ class MainWindow: Window {
             guard let self, let view, let args else { return }
 
             if args.isSettingsSelected {
-                view.header = App.context.tr("title", "SettingsPage")
                 let page = SettingsPage()
-                self.navigationContentFrame.content = page.body
+                view.header = page.header
+                self.navigationContentFrame.content = page.content
                 self.displayingPage = page
             } else if let item = args.selectedItem as? NavigationViewItem, let tag = item.tag {
                 let context = WindowContext(hwnd: self.appWindow)
                 for module in App.context.modules {
                     if let target = module.makeNavigationTarget(for: tag, in: context) {
                         view.header = target.header
-                        self.navigationContentFrame.content = target.page.body
-                        self.displayingPage = target.page
+                        self.navigationContentFrame.content = target.content
+                        self.displayingPage = target
                         break
                     }
                 }
@@ -212,8 +212,9 @@ class MainWindow: Window {
         if navigationContentFrame.content == nil && navigationView.menuItems.count > 0 {
             navigationView.selectedItem = navigationView.menuItems[0]
         }
-
-        self.navigationContentFrame.content = displayingPage?.body
+        
+        self.navigationView.header = displayingPage?.header
+        self.navigationContentFrame.content = displayingPage?.content
     }
     
     private func restoreWindowRect() {

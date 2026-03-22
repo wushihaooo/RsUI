@@ -12,7 +12,7 @@ public protocol Module : ExpressibleByEmptyLiteral {
 
     func registerNavigationViewItems(in context: WindowContext) -> [NavigationViewItem]
 
-    func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> (header: UIElement?, page: View)?
+    func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> View?
     func makeSettingsCard() -> UIElement?
 }
 
@@ -24,7 +24,7 @@ public extension Module {
         return []
     }
 
-    func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> (header: UIElement?, page: View)? {
+    func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> View? {
         return nil
     }
 

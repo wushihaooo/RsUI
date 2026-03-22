@@ -9,7 +9,11 @@ fileprivate func tr(_ keyAndValue: String) -> String {
 
 /// 设置页面类，管理主题和语言偏好设置
 class SettingsPage: View {
-    var body: UIElement {
+    var header: Any? {
+        return tr("title")
+    }
+
+    var content: UIElement {
         let root = WinUI.Grid()
 
         let mainStackPanel = WinUI.StackPanel()

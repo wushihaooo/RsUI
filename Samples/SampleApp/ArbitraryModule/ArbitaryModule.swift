@@ -5,7 +5,7 @@ import WinUI
 import RsUI
 import RsHelper
 
-fileprivate func tr(_ keyAndValue: String) -> String {
+func tr(_ keyAndValue: String) -> String {
     return App.context.language == .zh_CN ? "翻译\(keyAndValue)" : keyAndValue
 }
 
@@ -49,27 +49,9 @@ final class ArbitaryModule: Module {
         return [navigationViewItem]
     }
 
-    func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> (header: UIElement?, page: View)? {
+    func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> View? {
         guard let tag = selectedItemTag as? Uri, tag.host == self.id else { return nil }
-
-        let container = StackPanel()
-        container.padding = Thickness(left: 0, top: 0, right: 0, bottom: 32)
-        
-        // 欢迎标题
-        let titleBlock = TextBlock()
-        titleBlock.text = tr("Arbitrary Page")
-        container.children.append(titleBlock)
-        
-        // 副标题
-        let subtitleBlock = TextBlock()
-        subtitleBlock.text = tr("A demonstration page with various UI components")
-        subtitleBlock.fontSize = 14
-        subtitleBlock.foreground = SolidColorBrush(App.context.theme.isDark ? 
-            UWP.Color(a: 255, r: 180, g: 180, b: 180) : 
-            UWP.Color(a: 255, r: 100, g: 100, b: 100))
-        container.children.append(subtitleBlock)
-
-        return (container, ArbitaryPage())
+        return ArbitaryPage()
     }
 
     func makeSettingsCard() -> UIElement? {
