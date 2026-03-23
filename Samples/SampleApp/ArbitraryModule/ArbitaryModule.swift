@@ -27,7 +27,10 @@ final class ArbitaryModule: Module {
             label: tr("Arbitrary"),
             url: "rs://\(id)",
             actionGlyph: "\u{E72C}",
-            actionTooltip: tr("actionTooltip")
+            actionTooltip: tr("actionTooltip"),
+            actionHandler: { _, _ in
+                print("Refresh button clicked")
+            }
         )
         let sep = NavigationViewItemSeparator()
         return [header, navigationViewItem, sep]
