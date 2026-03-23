@@ -210,7 +210,12 @@ class MainWindow: Window {
             }
         }
         if navigationContentFrame.content == nil && navigationView.menuItems.count > 0 {
-            navigationView.selectedItem = navigationView.menuItems[0]
+            for item in navigationView.menuItems {
+                if item is NavigationViewItem {
+                    navigationView.selectedItem = item
+                    break
+                }
+            }
         }
         
         self.navigationView.header = displayingPage?.header

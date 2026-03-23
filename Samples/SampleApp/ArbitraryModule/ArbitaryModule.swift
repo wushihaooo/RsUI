@@ -19,34 +19,18 @@ final class ArbitaryModule: Module {
         log.info("ArbitaryModule deinit")
     }
 
-    func registerNavigationViewItems(in context: WindowContext) -> [NavigationViewItem] {
-        let navigationViewItem = NavigationViewItem()
-        let grid = Grid()
-        grid.horizontalAlignment = .stretch
-        grid.verticalAlignment = .center
-        
-        // 定义列：标签(填充) | 动作按钮(自动)
-        let textCol = ColumnDefinition()
-        textCol.width = GridLength(value: 1, gridUnitType: .star)
-        grid.columnDefinitions.append(textCol)
-
-        let textBlock = TextBlock()
-        textBlock.text = tr("Arbitrary")
-        textBlock.verticalAlignment = .center
-        textBlock.horizontalAlignment = .left
-        textBlock.textTrimming = .characterEllipsis
-        try? Grid.setColumn(textBlock, 0)
-        grid.children.append(textBlock)
-
-        navigationViewItem.content = grid
-        let icon = FontIcon()
-        icon.glyph = "\u{E7C3}"
-        icon.fontSize = 16
-        navigationViewItem.icon = icon
-
-        navigationViewItem.tag = Uri("rs://\(id)")
-
-        return [navigationViewItem]
+    func registerNavigationViewItems(in context: WindowContext) -> [NavigationViewItemBase] {
+        let header = NavigationViewItemHeader()
+        header.content = tr("Header")
+        let navigationViewItem = NavigationViewItem.build(
+            iconGlyph: "\u{E7C3}",
+            label: tr("Arbitrary"),
+            url: "rs://\(id)",
+            actionGlyph: "\u{E72C}",
+            actionTooltip: tr("actionTooltip")
+        )
+        let sep = NavigationViewItemSeparator()
+        return [header, navigationViewItem, sep]
     }
 
     func makeNavigationTarget(for selectedItemTag: Any, in context: WindowContext) -> View? {
