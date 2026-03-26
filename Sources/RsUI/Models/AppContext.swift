@@ -38,6 +38,17 @@ public class AppContext {
         }
     }
 
+    /// Default constructor for test view model without WinUI application running.
+    init() {
+        let group = "SwiftWorks"
+        productName = "RsUI"
+        supportDirectory = URL.applicationSupportDirectory.reachingChild(named: "\(group)/\(productName)/")!       
+        preferences = JsonPreferences.makeAppStandard(group: group, product: productName)
+        theme = .auto
+        language = .en_US
+        bundle = Bundle.main
+    }
+
     public func tr(_ keyAndValue: String, _ table: String? = nil) -> String {
         return String(localized: keyAndValue, table: table, bundle: bundle, locale: language.locale)
     }
