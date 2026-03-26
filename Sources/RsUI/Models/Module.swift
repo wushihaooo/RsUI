@@ -28,4 +28,8 @@ public extension Module {
     func makeSettingsCard() -> UIElement? {
         return nil
     }
+
+    func navigationRequested(for url: URL, in context: WindowContext) -> Page? {
+        return nil
+    }
 }
