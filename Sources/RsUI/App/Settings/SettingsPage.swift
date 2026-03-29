@@ -20,7 +20,7 @@ class SettingsPage: Page {
         let mainStackPanel = WinUI.StackPanel()
         mainStackPanel.orientation = .vertical
         mainStackPanel.spacing = 16
-        mainStackPanel.padding = WinUI.Thickness(left: 32, top: 40, right: 32, bottom: 0)
+        mainStackPanel.padding = WinUI.Thickness(left: 32, top: 40, right: 32, bottom: 40)
 
         let group = buildPersonalizationGroup()
         mainStackPanel.children.append(group)
@@ -34,11 +34,8 @@ class SettingsPage: Page {
         let scrollViewer = ScrollViewer()
         scrollViewer.verticalScrollBarVisibility = .auto
         scrollViewer.content = mainStackPanel
-
-        let root = WinUI.Grid()
-        root.children.append(scrollViewer)
         
-        return root
+        return scrollViewer
     }
 
     private func buildPersonalizationGroup() -> WinUI.StackPanel {
