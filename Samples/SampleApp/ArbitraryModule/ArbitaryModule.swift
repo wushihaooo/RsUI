@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import WindowsFoundation
 import UWP
 import WinUI
@@ -9,9 +10,10 @@ func tr(_ keyAndValue: String) -> String {
     return App.context.language == .zh_CN ? "翻译\(keyAndValue)" : keyAndValue
 }
 
+@Observable
 final class ArbitaryModule: Module {
     let id = "arbitrary"
-    let ring = ProgressRing()
+    var state = "loading"
     
     init() {
         log.info("ArbitaryModule init")
@@ -21,9 +23,16 @@ final class ArbitaryModule: Module {
     }
 
     func titleBarRightHeaderItemRequired(in context: WindowContext) -> UIElement? {
-        ring.isActive = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            self?.ring.isActive = false
+        let ring = ProgressRingEx()
+        ring.startObserving { [weak self] in
+            self?.state
+        } onChanged: { ring, value in
+            ring.isActive = value == "loading"
+        }
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            self?.state = ""
         }
 
         return ring
