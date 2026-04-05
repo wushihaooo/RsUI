@@ -7,6 +7,7 @@ import RsHelper
 
 @Observable
 public class AppContext {
+    public let groupName: String
     public let productName: String
     public let supportDirectory: URL
     public let preferences: Preferences
@@ -39,6 +40,7 @@ public class AppContext {
     var modules: [any Module] = []
 
     private init(_ group: String, _ product: String, _ resourceBundle: Bundle, _ loadAppearence: Bool) {
+        groupName = group
         productName = product
         supportDirectory = URL.applicationSupportDirectory.reachingChild(named: "\(group)/\(product)/")!       
         preferences = JsonPreferences.makeAppStandard(group: group, product: product)
