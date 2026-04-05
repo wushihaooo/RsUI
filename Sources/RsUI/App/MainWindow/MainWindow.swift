@@ -230,25 +230,22 @@ class MainWindow: Window {
             self.viewModel.currentPage
         }
         Task { [weak self] in
-            for await page in route {
-                await MainActor.run { [weak self, weak page] in
-                    guard let self, let page else { return }
-                    self.navigationView.header = page.header
-                    self.navigationContentFrame.content = page.content
-                    self.syncNavigationSelection(for: page)
-                }
-            }
-        }
-
-        let navButtons = Observations {
-            (self.viewModel.backwardPages.isEmpty, self.viewModel.forwardPages.isEmpty)
-        }
-        Task { [weak self] in
-            for await (backEmpty, forwardEmpty) in navButtons {
+            for await _ in route {
                 await MainActor.run { [weak self] in
                     guard let self else { return }
-                    self.backButton.isEnabled = !backEmpty
-                    self.forwardButton.isEnabled = !forwardEmpty
+                    
+                    if let page = self.viewModel.currentPage {
+                        self.navigationView.header = page.header
+                        self.navigationContentFrame.content = page.content
+                        self.syncNavigationSelection(for: page)
+                    } else {
+                        self.navigationView.header = nil
+                        self.navigationContentFrame.content = nil
+                        self.navigationView.selectedItem = nil
+                    }
+                    
+                    self.backButton.isEnabled = !self.viewModel.backwardPages.isEmpty
+                    self.forwardButton.isEnabled = !self.viewModel.forwardPages.isEmpty
                 }
             }
         }
