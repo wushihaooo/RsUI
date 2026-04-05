@@ -298,6 +298,7 @@ class MainWindow: Window {
         let context = WindowContext(owner: self)
         titleBarRightHeader.children.clear()
         navigationView.menuItems.clear()
+        navigationView.footerMenuItems.clear()
         for module in App.context.modules {
             if let item = module.titleBarRightHeaderItemRequired(in: context) {
                 titleBarRightHeader.children.append(item)
