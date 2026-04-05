@@ -29,9 +29,9 @@ class MainWindow: Window {
     private var isSyncingSelection = false
 
     /// UI 主要组件
-    private lazy var backButton: Button = {
+    private static func makeNavButton(glyph: String, action: @escaping () -> Void) -> Button {
         let icon = FontIcon()
-        icon.glyph = "\u{E72B}"
+        icon.glyph = glyph
         icon.fontSize = 12
         let btn = Button()
         btn.content = icon
@@ -41,36 +41,32 @@ class MainWindow: Window {
         btn.minHeight = 0
         btn.verticalAlignment = .center
         btn.padding = Thickness(left: 0, top: 0, right: 0, bottom: 0)
-        btn.background = SolidColorBrush(Colors.transparent)
-        btn.borderThickness = Thickness(left: 0, top: 0, right: 0, bottom: 0)
         btn.isEnabled = false
         btn.allowFocusOnInteraction = false
-        btn.click.addHandler { [weak self] _, _ in
-            self?.viewModel.goBack()
+
+        let transparent = SolidColorBrush(Colors.transparent)
+        let hoverBrush = SolidColorBrush(UWP.Color(a: 0x18, r: 0x80, g: 0x80, b: 0x80))
+        let pressedBrush = SolidColorBrush(UWP.Color(a: 0x30, r: 0x80, g: 0x80, b: 0x80))
+        for key in ["ButtonBackground", "ButtonBackgroundDisabled"] {
+            _ = btn.resources.insert(key, transparent)
         }
-        return btn
-    }()
-    private lazy var forwardButton: Button = {
-        let icon = FontIcon()
-        icon.glyph = "\u{E72A}"
-        icon.fontSize = 12
-        let btn = Button()
-        btn.content = icon
-        btn.width = 28
-        btn.height = 28
-        btn.minWidth = 0
-        btn.minHeight = 0
-        btn.verticalAlignment = .center
-        btn.padding = Thickness(left: 0, top: 0, right: 0, bottom: 0)
-        btn.background = SolidColorBrush(Colors.transparent)
-        btn.borderThickness = Thickness(left: 0, top: 0, right: 0, bottom: 0)
-        btn.isEnabled = false
-        btn.allowFocusOnInteraction = false
-        btn.click.addHandler { [weak self] _, _ in
-            self?.viewModel.goForward()
+        _ = btn.resources.insert("ButtonBackgroundPointerOver", hoverBrush)
+        _ = btn.resources.insert("ButtonBackgroundPressed", pressedBrush)
+        for key in ["ButtonBorderBrush", "ButtonBorderBrushPointerOver",
+                     "ButtonBorderBrushPressed", "ButtonBorderBrushDisabled"] {
+            _ = btn.resources.insert(key, transparent)
         }
+
+        btn.click.addHandler { _, _ in action() }
         return btn
-    }()
+    }
+
+    private lazy var backButton: Button = MainWindow.makeNavButton(glyph: "\u{E72B}") { [weak self] in
+        self?.viewModel.goBack()
+    }
+    private lazy var forwardButton: Button = MainWindow.makeNavButton(glyph: "\u{E72A}") { [weak self] in
+        self?.viewModel.goForward()
+    }
     private lazy var searchBox: AutoSuggestBox? = {
         // let box = AutoSuggestBox()
         // box.width = 360
@@ -101,6 +97,8 @@ class MainWindow: Window {
         }
 
         let barContentStackPanel = StackPanel()
+        barContentStackPanel.orientation = .horizontal
+        barContentStackPanel.spacing = 20
         let navButtons = StackPanel()
         navButtons.orientation = .horizontal
         navButtons.spacing = 2
