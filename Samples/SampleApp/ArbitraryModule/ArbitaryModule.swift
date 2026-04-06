@@ -82,13 +82,7 @@ final class ArbitaryModule: Module {
         toggle.onContent = tr("toggleOn")
         toggle.offContent = tr("toggleOff")
 
-        let card = buildSettingsCard(
-                iconGlyph: "\u{E70A}",
-                title: tr("metadataTitle"),
-                description: tr("metadataDescription"),
-                control: toggle
-            )
-
+        let card = SettingsCard("\u{E70A}", tr("metadataTitle"), tr("metadataDescription"), toggle)
         return (tr("Arbitrary Settings"), [card])
     }
     
