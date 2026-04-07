@@ -21,8 +21,16 @@ public class SettingsCard: Button {
 
         let icon = WinUI.FontIcon()
         icon.glyph = headerIconGlyph
-        let textBlock = TextBlock()
-        textBlock.text = description
+        
+        let textBlock: TextBlock = (try? XamlReader.load("""
+            <TextBlock xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" >
+            \(description)
+            </TextBlock>
+            """)) as? TextBlock ?? {
+            let tb = TextBlock()
+            tb.text = description
+            return tb
+        }()
 
         self.content = build(
             headerIcon: icon,
