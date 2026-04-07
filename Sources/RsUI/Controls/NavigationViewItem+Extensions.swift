@@ -50,6 +50,7 @@ public extension NavigationViewItem {
         // 1. 标签
         let textBlock = TextBlock()
         textBlock.text = label
+        textBlock.verticalAlignment = .center
         try? Grid.setColumn(textBlock, 0)
         grid.children.append(textBlock)
 
