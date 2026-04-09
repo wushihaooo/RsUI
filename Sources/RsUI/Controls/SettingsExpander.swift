@@ -31,14 +31,24 @@ public class SettingsExpander: StackPanel {
         super.init()
 
         let isDark = App.context.theme.isDark
+
+        // Header card with card styling suppressed — outer card provides the border
         let card = SettingsCard(headerIconPath, header, description, content, chevron)
+        card.isClickEnabled = true
+        card.suppressCardStyling()
         card.click.addHandler { [weak self] _, _ in
             guard let self else { return }
             self.runExpandCollapseAnimation(expanding: !self.isExpanded)
         }
-        self.children.append(card)
 
         expandedHost.renderTransform = expandedTransform
+
+        // Divider between header and expanded items
+        let topDivider = WinUI.Border()
+        topDivider.height = 1
+        topDivider.margin = WinUI.Thickness(left: 16, top: 0, right: 16, bottom: 0)
+        topDivider.background = dividerBrush(isDark: isDark)
+        expandedHost.children.append(topDivider)
 
         for (index, item) in items.enumerated() {
             if index > 0 {
@@ -48,9 +58,25 @@ public class SettingsExpander: StackPanel {
                 divider.background = dividerBrush(isDark: isDark)
                 expandedHost.children.append(divider)
             }
+            item.suppressCardStyling()
             expandedHost.children.append(item)
         }
-        self.children.append(expandedHost)
+
+        // One outer card container wrapping both header and expanded items
+        let outerCard = WinUI.Border()
+        outerCard.cornerRadius = WinUI.CornerRadius(topLeft: 8, topRight: 8, bottomRight: 8, bottomLeft: 8)
+        outerCard.background = cardBackgroundBrush(isDark: isDark)
+        outerCard.borderBrush = cardBorderBrush(isDark: isDark)
+        outerCard.borderThickness = WinUI.Thickness(left: 1, top: 1, right: 1, bottom: 1)
+
+        let cardStack = WinUI.StackPanel()
+        cardStack.orientation = .vertical
+        cardStack.spacing = 0
+        cardStack.children.append(card)
+        cardStack.children.append(expandedHost)
+
+        outerCard.child = cardStack
+        self.children.append(outerCard)
     }
 
     private func makeDuration(milliseconds: Int64) -> Duration {
@@ -354,7 +380,7 @@ private func dividerBrush(isDark: Bool) -> WinUI.SolidColorBrush {
     )
 }
 
-private func cardBackgroundBrush(isDark: Bool) -> WinUI.SolidColorBrush {
+func cardBackgroundBrush(isDark: Bool) -> WinUI.SolidColorBrush {
     WinUI.SolidColorBrush(
         isDark
             ? UWP.Color(a: 255, r: 32, g: 36, b: 44)
@@ -362,7 +388,7 @@ private func cardBackgroundBrush(isDark: Bool) -> WinUI.SolidColorBrush {
     )
 }
 
-private func cardBorderBrush(isDark: Bool) -> WinUI.SolidColorBrush {
+func cardBorderBrush(isDark: Bool) -> WinUI.SolidColorBrush {
     WinUI.SolidColorBrush(
         isDark
             ? UWP.Color(a: 255, r: 49, g: 55, b: 66)

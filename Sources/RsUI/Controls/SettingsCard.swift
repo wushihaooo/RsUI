@@ -3,17 +3,28 @@ import UWP
 import WinAppSDK
 import WinUI
 
-public class SettingsCard: Button {
+public class SettingsCard: ButtonBase {
     public var isClickEnabled = false
+
+    let cardBorder = WinUI.Border()
 
     private override init() {
         super.init()
+
+        let isDark = App.context.theme.isDark
 
         self.horizontalAlignment = .stretch
         self.verticalAlignment = .stretch
         self.horizontalContentAlignment = .stretch
         self.verticalContentAlignment = .stretch
-        self.padding = WinUI.Thickness(left: 10, top: 10, right: 10, bottom: 10)
+
+        cardBorder.background = cardBackgroundBrush(isDark: isDark)
+        cardBorder.borderBrush = cardBorderBrush(isDark: isDark)
+        cardBorder.borderThickness = WinUI.Thickness(left: 1, top: 1, right: 1, bottom: 1)
+        cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 8, topRight: 8, bottomRight: 8, bottomLeft: 8)
+        cardBorder.padding = WinUI.Thickness(left: 10, top: 10, right: 10, bottom: 10)
+
+        self.content = cardBorder
     }
 
     public convenience init(_ headerIconGlyph: String, _ header: String, _ description: String, _ content: FrameworkElement, _ actionIcon: FontIcon? = nil) {
@@ -21,7 +32,7 @@ public class SettingsCard: Button {
 
         let icon = WinUI.FontIcon()
         icon.glyph = headerIconGlyph
-        
+
         let textBlock: TextBlock = (try? XamlReader.load("""
             <TextBlock xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" >
             \(description)
@@ -32,7 +43,7 @@ public class SettingsCard: Button {
             return tb
         }()
 
-        self.content = build(
+        cardBorder.child = build(
             headerIcon: icon,
             header: header,
             description: textBlock,
@@ -53,7 +64,7 @@ public class SettingsCard: Button {
         let contentTextBlock = TextBlock()
         contentTextBlock.text = content
 
-        self.content = build(
+        cardBorder.child = build(
             headerIcon: icon,
             header: header,
             description: descTextBlock,
@@ -65,10 +76,18 @@ public class SettingsCard: Button {
     public convenience init(_ header: String, _ description: FrameworkElement) {
         self.init()
 
-        self.content = build(
+        cardBorder.child = build(
             header: header,
             description: description
         )
+    }
+
+    // Remove card border/background for use as an inner item inside SettingsExpander
+    func suppressCardStyling() {
+        cardBorder.background = nil
+        cardBorder.borderBrush = nil
+        cardBorder.borderThickness = WinUI.Thickness(left: 0, top: 0, right: 0, bottom: 0)
+        cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0)
     }
 
     private func build(headerIcon: IconElement? = nil, header: String, description: FrameworkElement, content: FrameworkElement? = nil, actionIcon: FontIcon? = nil) -> WinUI.Grid {
