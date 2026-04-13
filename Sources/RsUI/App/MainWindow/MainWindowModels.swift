@@ -2,11 +2,11 @@ import Foundation
 import RsHelper
 
 struct WindowPosition: Preferable {
-    var windowWidth: Int = 1280
+    var windowWidth: Int = 1440
     var windowHeight: Int = 800
     var windowX: Int = 100
     var windowY: Int = 100
-    var isMaximized: Bool = false
+    var isMaximized: Bool = true
 }
 
 struct WindowLayout: Preferable {
