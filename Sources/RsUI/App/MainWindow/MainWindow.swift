@@ -138,9 +138,9 @@ class MainWindow: Window {
         nav.isPaneToggleButtonVisible = false
         nav.paneDisplayMode = .auto
         nav.compactModeThresholdWidth = 0
+        nav.expandedModeThresholdWidth = 0
         nav.isPaneOpen = viewModel.windowLayout.navigationViewPaneOpen
         nav.openPaneLength = Double(viewModel.windowLayout.navigationViewOpenPaneLength)
-        nav.expandedModeThresholdWidth = nav.openPaneLength + 688 // MARK: 600 is from defaults 1008 - 320
         nav.content = navigationContentFrame
 
         return nav
@@ -417,7 +417,6 @@ class MainWindow: Window {
 
     private func applyPaneLength(_ length: Double) {
         navigationView.openPaneLength = length
-        navigationView.expandedModeThresholdWidth = length + 688
         splitterBorder.margin = Thickness(
             left: length - splitterWidth / 2,
             top: 0, right: 0, bottom: 0
