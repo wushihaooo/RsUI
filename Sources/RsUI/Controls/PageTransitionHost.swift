@@ -2,23 +2,18 @@ import UWP
 import WinUI
 import WindowsFoundation
 
-/// 页面切换动画容器。
-/// 用 Grid 叠加新旧内容，通过 Opacity + TranslateX 动画实现方向性过渡。
+/// Hosts page content and applies WinUI-style navigation transition overrides.
 class PageTransitionHost: Grid {
-    // MARK: - 配置
     private let animationDurationMs: Int64 = 200
     private let slideDistance: Double = 40.0
 
-    // MARK: - 状态
     private var isAnimating = false
     private var currentWrapper: Border?
-    private var pendingTransition: (content: UIElement?, direction: NavigationDirection)?
+    private var pendingTransition: (content: UIElement?, transitionInfo: NavigationTransitionInfo?)?
 
-    // MARK: - 公开接口
-
-    func transition(to newContent: UIElement?, direction: NavigationDirection) {
+    func transition(to newContent: UIElement?, transitionInfo: NavigationTransitionInfo? = nil) {
         if isAnimating {
-            pendingTransition = (newContent, direction)
+            pendingTransition = (newContent, transitionInfo)
             return
         }
 
@@ -27,141 +22,179 @@ class PageTransitionHost: Grid {
         guard let newContent else {
             currentWrapper = nil
             if let oldWrapper {
-                runExitAnimation(wrapper: oldWrapper, direction: direction)
+                runExitAnimation(wrapper: oldWrapper, transitionInfo: transitionInfo)
             }
             return
         }
 
         let wrapper = Border()
         let transform = CompositeTransform()
+        let offset = transitionOffset(for: transitionInfo)
+        transform.translateX = offset.x
+        transform.translateY = offset.y
+
         wrapper.child = newContent
         wrapper.renderTransform = transform
         wrapper.opacity = 0
 
-        switch direction {
-        case .forward:  transform.translateX = slideDistance
-        case .backward: transform.translateX = -slideDistance
-        case .none:     transform.translateX = 0
-        }
-
-        self.children.append(wrapper)
+        children.append(wrapper)
         currentWrapper = wrapper
 
-        runTransition(oldWrapper: oldWrapper, newWrapper: wrapper, newTransform: transform, direction: direction)
-    }
+        if transitionInfo is SuppressNavigationTransitionInfo {
+            oldWrapper?.child = nil
+            if let oldWrapper {
+                removeChild(oldWrapper)
+            }
+            wrapper.opacity = 1
+            transform.translateX = 0
+            transform.translateY = 0
+            return
+        }
 
-    // MARK: - 动画实现
+        runTransition(
+            oldWrapper: oldWrapper,
+            newWrapper: wrapper,
+            newTransform: transform,
+            offset: offset
+        )
+    }
 
     private func runTransition(
         oldWrapper: Border?,
         newWrapper: Border,
         newTransform: CompositeTransform,
-        direction: NavigationDirection
+        offset: (x: Double, y: Double)
     ) {
         isAnimating = true
+
         let storyboard = Storyboard()
         let duration = makeDuration(milliseconds: animationDurationMs)
         let easing = CubicEase()
         easing.easingMode = .easeOut
 
-        // 新内容：淡入 + 滑入
-        let newOpacity = DoubleAnimation()
-        newOpacity.from = 0.0
-        newOpacity.to = 1.0
-        newOpacity.duration = duration
-        newOpacity.easingFunction = easing
-        try? Storyboard.setTarget(newOpacity, newWrapper)
-        try? Storyboard.setTargetProperty(newOpacity, "Opacity")
-        storyboard.children.append(newOpacity)
+        addOpacityAnimation(to: storyboard, target: newWrapper, from: 0, to: 1, duration: duration, easing: easing)
+        addSlideAnimation(to: storyboard, target: newTransform, property: "TranslateX", from: offset.x, to: 0, duration: duration, easing: easing)
+        addSlideAnimation(to: storyboard, target: newTransform, property: "TranslateY", from: offset.y, to: 0, duration: duration, easing: easing)
 
-        if direction != .none {
-            let newSlide = DoubleAnimation()
-            newSlide.from = direction == .forward ? slideDistance : -slideDistance
-            newSlide.to = 0.0
-            newSlide.duration = duration
-            newSlide.easingFunction = easing
-            try? Storyboard.setTarget(newSlide, newTransform)
-            try? Storyboard.setTargetProperty(newSlide, "TranslateX")
-            storyboard.children.append(newSlide)
-        }
-
-        // 旧内容：淡出 + 滑出
         if let oldWrapper {
-            let oldTransform = oldWrapper.renderTransform as? CompositeTransform
+            addOpacityAnimation(to: storyboard, target: oldWrapper, from: 1, to: 0, duration: duration, easing: easing)
 
-            let oldOpacity = DoubleAnimation()
-            oldOpacity.from = 1.0
-            oldOpacity.to = 0.0
-            oldOpacity.duration = duration
-            oldOpacity.easingFunction = easing
-            try? Storyboard.setTarget(oldOpacity, oldWrapper)
-            try? Storyboard.setTargetProperty(oldOpacity, "Opacity")
-            storyboard.children.append(oldOpacity)
-
-            if direction != .none, let oldTransform {
-                let oldSlide = DoubleAnimation()
-                oldSlide.from = 0.0
-                oldSlide.to = direction == .forward ? -slideDistance : slideDistance
-                oldSlide.duration = duration
-                oldSlide.easingFunction = easing
-                try? Storyboard.setTarget(oldSlide, oldTransform)
-                try? Storyboard.setTargetProperty(oldSlide, "TranslateX")
-                storyboard.children.append(oldSlide)
+            if let oldTransform = oldWrapper.renderTransform as? CompositeTransform {
+                addSlideAnimation(to: storyboard, target: oldTransform, property: "TranslateX", from: 0, to: -offset.x, duration: duration, easing: easing)
+                addSlideAnimation(to: storyboard, target: oldTransform, property: "TranslateY", from: 0, to: -offset.y, duration: duration, easing: easing)
             }
         }
 
         storyboard.completed.addHandler { [weak self] _, _ in
             guard let self else { return }
+
             if let oldWrapper {
                 oldWrapper.child = nil
                 self.removeChild(oldWrapper)
             }
-            self.isAnimating = false
 
-            if let pending = self.pendingTransition {
-                self.pendingTransition = nil
-                self.transition(to: pending.content, direction: pending.direction)
-            }
+            self.isAnimating = false
+            self.runPendingTransitionIfNeeded()
         }
 
         try? storyboard.begin()
     }
 
-    private func runExitAnimation(wrapper: Border, direction: NavigationDirection) {
+    private func runExitAnimation(wrapper: Border, transitionInfo: NavigationTransitionInfo?) {
+        if transitionInfo is SuppressNavigationTransitionInfo {
+            wrapper.child = nil
+            removeChild(wrapper)
+            return
+        }
+
         isAnimating = true
+
         let storyboard = Storyboard()
         let duration = makeDuration(milliseconds: animationDurationMs)
         let easing = CubicEase()
         easing.easingMode = .easeOut
 
-        let opacity = DoubleAnimation()
-        opacity.from = 1.0
-        opacity.to = 0.0
-        opacity.duration = duration
-        opacity.easingFunction = easing
-        try? Storyboard.setTarget(opacity, wrapper)
-        try? Storyboard.setTargetProperty(opacity, "Opacity")
-        storyboard.children.append(opacity)
+        addOpacityAnimation(to: storyboard, target: wrapper, from: 1, to: 0, duration: duration, easing: easing)
 
         storyboard.completed.addHandler { [weak self] _, _ in
             guard let self else { return }
+
             wrapper.child = nil
             self.removeChild(wrapper)
             self.isAnimating = false
-
-            if let pending = self.pendingTransition {
-                self.pendingTransition = nil
-                self.transition(to: pending.content, direction: pending.direction)
-            }
+            self.runPendingTransitionIfNeeded()
         }
 
         try? storyboard.begin()
     }
 
+    private func runPendingTransitionIfNeeded() {
+        guard let pending = pendingTransition else { return }
+
+        pendingTransition = nil
+        transition(to: pending.content, transitionInfo: pending.transitionInfo)
+    }
+
+    private func transitionOffset(for transitionInfo: NavigationTransitionInfo?) -> (x: Double, y: Double) {
+        guard let slide = transitionInfo as? SlideNavigationTransitionInfo else {
+            return (0, 0)
+        }
+
+        switch slide.effect {
+        case .fromLeft:
+            return (-slideDistance, 0)
+        case .fromRight:
+            return (slideDistance, 0)
+        case .fromBottom:
+            return (0, slideDistance)
+        default:
+            return (0, 0)
+        }
+    }
+
+    private func addOpacityAnimation(
+        to storyboard: Storyboard,
+        target: UIElement,
+        from: Double,
+        to: Double,
+        duration: Duration,
+        easing: CubicEase
+    ) {
+        let animation = DoubleAnimation()
+        animation.from = from
+        animation.to = to
+        animation.duration = duration
+        animation.easingFunction = easing
+        try? Storyboard.setTarget(animation, target)
+        try? Storyboard.setTargetProperty(animation, "Opacity")
+        storyboard.children.append(animation)
+    }
+
+    private func addSlideAnimation(
+        to storyboard: Storyboard,
+        target: CompositeTransform,
+        property: String,
+        from: Double,
+        to: Double,
+        duration: Duration,
+        easing: CubicEase
+    ) {
+        guard from != to else { return }
+
+        let animation = DoubleAnimation()
+        animation.from = from
+        animation.to = to
+        animation.duration = duration
+        animation.easingFunction = easing
+        try? Storyboard.setTarget(animation, target)
+        try? Storyboard.setTargetProperty(animation, property)
+        storyboard.children.append(animation)
+    }
+
     private func removeChild(_ element: UIElement) {
         var idx: UInt32 = 0
-        if self.children.indexOf(element, &idx) {
-            self.children.removeAt(idx)
+        if children.indexOf(element, &idx) {
+            children.removeAt(idx)
         }
     }
 

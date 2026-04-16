@@ -1,12 +1,7 @@
 import Foundation
 import Observation
+import WinUI
 import RsHelper
-
-enum NavigationDirection {
-    case forward
-    case backward
-    case none
-}
 
 @Observable
 class MainWindowViewModel {
@@ -17,7 +12,7 @@ class MainWindowViewModel {
     var backwardPages: [Page] = []
     var forwardPages: [Page] = []
     var currentPage: Page? = nil
-    var navigationDirection: NavigationDirection = .none
+    var navigationTransitionInfo: NavigationTransitionInfo? = nil
 
     init() {
         windowPosition = App.context.preferences.load(for: WindowPosition.self)
@@ -31,12 +26,11 @@ class MainWindowViewModel {
         App.context.preferences.save(routePreferences)
     }
 
-    func navigate(to page: Page) {
+    func navigate(to page: Page, transitionInfoOverride: NavigationTransitionInfo? = nil) {
+        navigationTransitionInfo = transitionInfoOverride
         if (currentPage === page) { // For refresh current page by appearance change etc.
-            navigationDirection = .none
             currentPage = page
         } else {
-            navigationDirection = .forward
             if let previousPage = currentPage {
                 backwardPages.append(previousPage)
                 if backwardPages.count > routePreferences.maxHistoryPages {
@@ -49,10 +43,10 @@ class MainWindowViewModel {
         }
     }
 
-    func goBack() {
+    func goBack(_ transitionInfoOverride: NavigationTransitionInfo? = nil) {
         guard !backwardPages.isEmpty else { return }
 
-        navigationDirection = .backward
+        navigationTransitionInfo = transitionInfoOverride
         if let page = currentPage {
             forwardPages.append(page)
         }
@@ -60,10 +54,10 @@ class MainWindowViewModel {
         routePreferences.lastPageURL = currentPage?.url
     }
 
-    func goForward() {
+    func goForward(_ transitionInfoOverride: NavigationTransitionInfo? = nil) {
         guard !forwardPages.isEmpty else { return }
 
-        navigationDirection = .forward
+        navigationTransitionInfo = transitionInfoOverride
         if let page = currentPage {
             backwardPages.append(page)
         }

@@ -69,10 +69,10 @@ class MainWindow: Window {
     }
 
     private lazy var backButton: Button = MainWindow.makeNavButton(glyph: "\u{E72B}") { [weak self] in
-        self?.viewModel.goBack()
+        self?.viewModel.goBack(MainWindow.makeSlideTransition(effect: .fromLeft))
     }
     private lazy var forwardButton: Button = MainWindow.makeNavButton(glyph: "\u{E72A}") { [weak self] in
-        self?.viewModel.goForward()
+        self?.viewModel.goForward(MainWindow.makeSlideTransition(effect: .fromRight))
     }
     private lazy var searchBox: AutoSuggestBox? = {
         // let box = AutoSuggestBox()
@@ -156,19 +156,25 @@ class MainWindow: Window {
         startObserving()
     }
 
-    func navigate(to page: Page) {
-        viewModel.navigate(to: page)
+    private static func makeSlideTransition(effect: SlideNavigationTransitionEffect) -> NavigationTransitionInfo {
+        let transition = SlideNavigationTransitionInfo()
+        transition.effect = effect
+        return transition
     }
 
-    func navigate(to url: URL) -> Bool {
+    func navigate(to page: Page, transitionInfoOverride: NavigationTransitionInfo? = nil) {
+        viewModel.navigate(to: page, transitionInfoOverride: transitionInfoOverride)
+    }
+
+    func navigate(to url: URL, transitionInfoOverride: NavigationTransitionInfo? = nil) -> Bool {
         if url == SettingsPage.url {
-            navigate(to: SettingsPage())
+            navigate(to: SettingsPage(), transitionInfoOverride: transitionInfoOverride)
             return true
         } else {
             let context = WindowContext(owner: self)
             for module in App.context.modules {
                 if let page = module.navigationRequested(for: url, in: context) {
-                    navigate(to: page)
+                    navigate(to: page, transitionInfoOverride: transitionInfoOverride)
                     return true
                 }
             }
@@ -222,13 +228,13 @@ class MainWindow: Window {
             guard let self, let args, !self.isSyncingSelection else { return }
 
             if args.isSettingsSelected {
-                navigate(to: SettingsPage())
+                navigate(to: SettingsPage(), transitionInfoOverride: args.recommendedNavigationTransitionInfo)
             } else if
                 let item = args.selectedItem as? NavigationViewItem,
                 let tag = item.tag,
                 let str = tag as? HString,
                 let url = URL(string: String(hString: str)) {
-                _ = navigate(to: url)
+                _ = navigate(to: url, transitionInfoOverride: args.recommendedNavigationTransitionInfo)
             }
         }
 
@@ -276,14 +282,14 @@ class MainWindow: Window {
                         self.navigationView.header = page.header
                         self.navigationContentFrame.transition(
                             to: page.content,
-                            direction: self.viewModel.navigationDirection
+                            transitionInfo: self.viewModel.navigationTransitionInfo
                         )
-                        self.syncNavigationSelection(for: page)
+                        self.syncNavigationSelection(for: page.url)
                     } else {
                         self.navigationView.header = nil
                         self.navigationContentFrame.transition(
                             to: nil,
-                            direction: self.viewModel.navigationDirection
+                            transitionInfo: self.viewModel.navigationTransitionInfo
                         )
                         self.navigationView.selectedItem = nil
                     }
@@ -295,37 +301,11 @@ class MainWindow: Window {
         }
     }
 
-    private func syncNavigationSelection(for page: Page) {
+    private func syncNavigationSelection(for url: URL) {
         isSyncingSelection = true
         defer { isSyncingSelection = false }
-
-        let urlString = page.url.absoluteString
-
-        if urlString == "rs://ui/settings" {
-            if let settingsItem = navigationView.settingsItem as? NavigationViewItem {
-                settingsItem.isSelected = true
-            }
-            return
-        }
-
-        for item in navigationView.menuItems {
-            if let navItem = item as? NavigationViewItem,
-               let tag = navItem.tag,
-               let str = tag as? HString,
-               String(hString: str) == urlString {
-                navigationView.selectedItem = navItem
-                return
-            }
-        }
-        for item in navigationView.footerMenuItems {
-            if let navItem = item as? NavigationViewItem,
-               let tag = navItem.tag,
-               let str = tag as? HString,
-               String(hString: str) == urlString {
-                navigationView.selectedItem = navItem
-                return
-            }
-        }
+        
+        navigationView.selectItem(with: url)
     }
 
     private func applyAppearance() {
