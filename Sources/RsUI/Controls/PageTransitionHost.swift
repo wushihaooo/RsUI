@@ -87,14 +87,15 @@ class PageTransitionHost: Grid {
 
         storyboard.completed.addHandler { [weak self] _, _ in
             guard let self else { return }
-
-            if let oldWrapper {
-                oldWrapper.child = nil
-                self.removeChild(oldWrapper)
+            try? self.dispatcherQueue?.tryEnqueue { [weak self] in
+                guard let self else { return }
+                if let oldWrapper {
+                    oldWrapper.child = nil
+                    self.removeChild(oldWrapper)
+                }
+                self.isAnimating = false
+                self.runPendingTransitionIfNeeded()
             }
-
-            self.isAnimating = false
-            self.runPendingTransitionIfNeeded()
         }
 
         try? storyboard.begin()
@@ -118,11 +119,13 @@ class PageTransitionHost: Grid {
 
         storyboard.completed.addHandler { [weak self] _, _ in
             guard let self else { return }
-
-            wrapper.child = nil
-            self.removeChild(wrapper)
-            self.isAnimating = false
-            self.runPendingTransitionIfNeeded()
+            try? self.dispatcherQueue?.tryEnqueue { [weak self] in
+                guard let self else { return }
+                wrapper.child = nil
+                self.removeChild(wrapper)
+                self.isAnimating = false
+                self.runPendingTransitionIfNeeded()
+            }
         }
 
         try? storyboard.begin()
