@@ -202,7 +202,6 @@ public class SettingsCard: ButtonBase {
 
     private func enableInteraction() {
         disableInteraction()
-        let isDark: Bool = App.context.theme.isDark
 
         pointerEnteredToken = pointerEntered.addHandler { [weak self] _, _ in
             self?.goToPointerOverState()

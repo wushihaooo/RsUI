@@ -157,7 +157,7 @@ public class SettingsExpander: StackPanel {
 
         // Items
         let effectiveItems = itemsSource ?? items
-        for (index, item) in effectiveItems.enumerated() {
+        for item in effectiveItems {
             item.suppressCardStyling()
             item.applyExpanderItemPadding()
             // Top border only (0,1,0,0) to match WCTK item separator style
