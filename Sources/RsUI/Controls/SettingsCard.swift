@@ -437,39 +437,36 @@ public class SettingsCard: ButtonBase {
 func cardBackgroundBrush(isDark: Bool) -> WinUI.SolidColorBrush {
     WinUI.SolidColorBrush(
         isDark
-            ? UWP.Color(a: 13, r: 255, g: 255, b: 255)
-            : UWP.Color(a: 179, r: 255, g: 255, b: 255)
+            ? UWP.Color(a: 0x0D, r: 0xFF, g: 0xFF, b: 0xFF)
+            : UWP.Color(a: 0xB3, r: 0xFF, g: 0xFF, b: 0xFF)
+    )
+}
+
+private func cardHoverBrush(isDark: Bool) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(
+        isDark
+            ? UWP.Color(a: 0x15, r: 0xFF, g: 0xFF, b: 0xFF)
+            : UWP.Color(a: 0x80, r: 0xF9, g: 0xF9, b: 0xF9)
+    )
+}
+
+private func cardPressedBrush(isDark: Bool) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(
+        isDark
+            ? UWP.Color(a: 0x08, r: 0xFF, g: 0xFF, b: 0xFF)
+            : UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9)
     )
 }
 
 func cardBorderBrush(isDark: Bool) -> WinUI.SolidColorBrush {
     WinUI.SolidColorBrush(
         isDark
-            ? UWP.Color(a: 25, r: 255, g: 255, b: 255)   // CardStrokeColorDefaultBrush dark: #19FFFFFF
-            : UWP.Color(a: 15, r: 0, g: 0, b: 0)          // CardStrokeColorDefaultBrush light: #0F000000
-    )
-}
-
-private func cardHoverBrush(isDark: Bool) -> WinUI.SolidColorBrush {
-    // ControlFillColorSecondaryBrush: light #F9F9F9, dark #0FFFFFFF
-    WinUI.SolidColorBrush(
-        isDark
-            ? UWP.Color(a: 15, r: 255, g: 255, b: 255)
-            : UWP.Color(a: 255, r: 249, g: 249, b: 249)
-    )
-}
-
-private func cardPressedBrush(isDark: Bool) -> WinUI.SolidColorBrush {
-    // ControlFillColorTertiaryBrush: light #F9F9F9 ~78%, dark #0AFFFFFF
-    WinUI.SolidColorBrush(
-        isDark
-            ? UWP.Color(a: 10, r: 255, g: 255, b: 255)
-            : UWP.Color(a: 199, r: 249, g: 249, b: 249)
+            ? UWP.Color(a: 25, r: 255, g: 255, b: 255)
+            : UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00)
     )
 }
 
 func dividerBrush(isDark: Bool) -> WinUI.SolidColorBrush {
-    // ExpanderContentBorderBrush: light #0F000000, dark #18FFFFFF
     WinUI.SolidColorBrush(
         isDark
             ? UWP.Color(a: 24, r: 255, g: 255, b: 255)
