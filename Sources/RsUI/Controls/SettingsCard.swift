@@ -40,7 +40,7 @@ public class SettingsCard: ButtonBase {
 
     let cardBorder = WinUI.Border()
     private var rootGrid: WinUI.Grid?
-    private var actionIconHolder: FrameworkElement?
+    private var actionIconHolder: Viewbox?
 
     // MARK: - Init
 
@@ -54,11 +54,16 @@ public class SettingsCard: ButtonBase {
         self.horizontalContentAlignment = .stretch
         self.verticalContentAlignment = .stretch
 
+        cardBorder.minWidth = 148
+        cardBorder.minHeight = 68
+        cardBorder.padding = WinUI.Thickness(left: 16, top: 16, right: 16, bottom: 16)
+        cardBorder.horizontalAlignment = .stretch
+        cardBorder.verticalAlignment = .center
+        cardBorder.backgroundSizing = .innerBorderEdge
+        cardBorder.borderThickness = WinUI.Thickness(left: 1, top: 1, right: 1, bottom: 1)
+        cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 4, topRight: 4, bottomRight: 8, bottomLeft: 4)
         cardBorder.background = cardBackgroundBrush(isDark: isDark)
         cardBorder.borderBrush = cardBorderBrush(isDark: isDark)
-        cardBorder.borderThickness = WinUI.Thickness(left: 1, top: 1, right: 1, bottom: 1)
-        cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 8, topRight: 8, bottomRight: 8, bottomLeft: 8)
-        cardBorder.padding = WinUI.Thickness(left: 16, top: 16, right: 16, bottom: 16)
 
         self.content = cardBorder
     }
@@ -226,7 +231,7 @@ public class SettingsCard: ButtonBase {
 
         // Columns: [icon] [text*] [content auto] [actionIcon auto]
         let iconCol = WinUI.ColumnDefinition()
-        iconCol.width = WinUI.GridLength(value: headerIcon != nil ? 40 : 0, gridUnitType: .pixel)
+        iconCol.width = WinUI.GridLength(value: 1, gridUnitType: .auto)
         container.columnDefinitions.append(iconCol)
 
         let textCol = WinUI.ColumnDefinition()
@@ -243,14 +248,14 @@ public class SettingsCard: ButtonBase {
 
         // Rows: [header auto] [description auto]
         let headerRow = WinUI.RowDefinition()
-        headerRow.height = WinUI.GridLength(value: 1, gridUnitType: .auto)
+        headerRow.height = WinUI.GridLength(value: 1, gridUnitType: .star)
         container.rowDefinitions.append(headerRow)
 
         let descRow = WinUI.RowDefinition()
         descRow.height = WinUI.GridLength(value: 1, gridUnitType: .auto)
         container.rowDefinitions.append(descRow)
 
-        // Header icon (col 0, spans both rows)
+        // Header Icon Holder (col 0, spans both rows)
         if let icon = headerIcon {
             if let fontIcon = icon as? WinUI.FontIcon {
                 fontIcon.fontSize = 20
@@ -259,11 +264,28 @@ public class SettingsCard: ButtonBase {
                 imageIcon.height = 24
             }
             icon.verticalAlignment = .center
-            container.children.append(icon)
-            try? WinUI.Grid.setRow(icon, 0)
-            try? WinUI.Grid.setColumn(icon, 0)
-            try? WinUI.Grid.setRowSpan(icon, 2)
+
+            // HeaderIconHolder
+            let headerIconHolder: Viewbox = WinUI.Viewbox()
+            headerIconHolder.width = 20
+            headerIconHolder.height = 20
+            headerIconHolder.margin = WinUI.Thickness(left: 2, top: 0, right: 20, bottom: 0)
+            headerIconHolder.verticalAlignment = .center
+            headerIconHolder.stretch = .uniform
+            headerIconHolder.child = icon
+            container.children.append(headerIconHolder)
+            try? WinUI.Grid.setRow(headerIconHolder, 0)
+            try? WinUI.Grid.setColumn(headerIconHolder, 0)
         }
+
+        // Header Panel
+        let headerPanel: StackPanel = WinUI.StackPanel()
+        headerPanel.orientation = .vertical
+        headerPanel.verticalAlignment = .center
+        headerPanel.margin = WinUI.Thickness(left: 0, top: 0, right: 24, bottom: 0)
+        try? WinUI.Grid.setRow(headerPanel, 0)
+        try? WinUI.Grid.setColumn(headerPanel, 1)
+        container.children.append(headerPanel)
 
         // Header label (col 1, row 0)
         if let headerText = header, !headerText.isEmpty {
@@ -271,10 +293,8 @@ public class SettingsCard: ButtonBase {
             titleLabel.text = headerText
             titleLabel.fontSize = 14
             titleLabel.textWrapping = .wrap
-            titleLabel.margin = WinUI.Thickness(left: headerIcon != nil ? 16 : 0, top: 0, right: 0, bottom: 2)
-            container.children.append(titleLabel)
-            try? WinUI.Grid.setRow(titleLabel, 0)
-            try? WinUI.Grid.setColumn(titleLabel, 1)
+            titleLabel.margin = WinUI.Thickness(left: 0, top: 0, right: 0, bottom: 0)
+            headerPanel.children.append(titleLabel)
         }
 
         // Description (col 1, row 1)
@@ -283,13 +303,11 @@ public class SettingsCard: ButtonBase {
                 tb.foreground = secondaryForeground
                 tb.fontSize = 12
                 tb.textWrapping = .wrap
-                tb.margin = WinUI.Thickness(left: headerIcon != nil ? 16 : 0, top: 0, right: 0, bottom: 0)
+                tb.margin = WinUI.Thickness(left: 0, top: 0, right: 0, bottom: 0)
             } else {
-                desc.margin = WinUI.Thickness(left: headerIcon != nil ? 16 : 0, top: 0, right: 0, bottom: 0)
+                desc.margin = WinUI.Thickness(left: 0, top: 0, right: 0, bottom: 0)
             }
-            container.children.append(desc)
-            try? WinUI.Grid.setRow(desc, 1)
-            try? WinUI.Grid.setColumn(desc, 1)
+            headerPanel.children.append(desc)
         }
 
         // Right-side content (col 2, spans both rows) — only shown in .right alignment
@@ -304,19 +322,29 @@ public class SettingsCard: ButtonBase {
         // Action icon (col 3, spans both rows) — only when isClickEnabled && isActionIconVisible
         let effectiveActionIcon = actionIcon ?? self.actionIcon
         if let aIcon = effectiveActionIcon {
+            // actionIconHolder
+            let actionIconHolder: Viewbox = Viewbox()
+            actionIconHolder.width = 13
+            actionIconHolder.height = 13
+            actionIconHolder.margin = WinUI.Thickness(left: 14, top: 0, right: 0, bottom: 0)
+            actionIconHolder.horizontalAlignment = .center
+            actionIconHolder.verticalAlignment = .center
+            actionIconHolder.stretch = .uniform
+            
             aIcon.fontSize = 13
-            aIcon.margin = WinUI.Thickness(left: 14, top: 0, right: 0, bottom: 0)
+            aIcon.margin = WinUI.Thickness(left: 0, top: 0, right: 0, bottom: 0)
             aIcon.verticalAlignment = .center
             if let toolTip = actionIconToolTip {
                 // ToolTipService not directly available in this API; store for future use
                 _ = toolTip
             }
-            aIcon.visibility = (isClickEnabled && isActionIconVisible) ? .visible : .collapsed
-            container.children.append(aIcon)
-            try? WinUI.Grid.setRow(aIcon, 0)
-            try? WinUI.Grid.setColumn(aIcon, 3)
-            try? WinUI.Grid.setRowSpan(aIcon, 2)
-            actionIconHolder = aIcon
+
+            actionIconHolder.visibility = (isClickEnabled && isActionIconVisible) ? .visible : .collapsed
+            actionIconHolder.child = aIcon
+            self.actionIconHolder = actionIconHolder
+            container.children.append(actionIconHolder)
+            try? WinUI.Grid.setRowSpan(actionIconHolder, 2)
+            try? WinUI.Grid.setColumn(actionIconHolder, 3)
         }
 
         rootGrid = container
