@@ -69,7 +69,7 @@ public class SettingsCard: ButtonBase {
         cardBorder.verticalAlignment = .center
         cardBorder.backgroundSizing = .innerBorderEdge
         cardBorder.borderThickness = WinUI.Thickness(left: 1, top: 1, right: 1, bottom: 1)
-        cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 4, topRight: 4, bottomRight: 8, bottomLeft: 4)
+        cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 4, topRight: 4, bottomRight: 4, bottomLeft: 4)
         cardBorder.background = cardBackgroundBrush(isDark: isDark)
         cardBorder.borderBrush = cardBorderBrush(isDark: isDark)
 
