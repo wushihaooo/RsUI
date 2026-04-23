@@ -1,0 +1,123 @@
+import UWP
+import WinUI
+
+
+// MARK: - Brushes (internal)
+
+enum SettingsBrushMode {
+    case light
+    case dark
+    case automatic
+
+    init(theme: AppTheme) {
+        switch theme {
+        case .light:
+            self = .light
+        case .dark:
+            self = .dark
+        case .auto:
+            self = .automatic
+        }
+    }
+}
+
+private struct SettingsBrushPalette {
+    let settingsCardBackground: UWP.Color
+    let settingsCardBackgroundPointerOver: UWP.Color
+    let settingsCardBackgroundPressed: UWP.Color
+    let settingsCardBackgroundDisabled: UWP.Color
+
+    let settingsCardForeground: UWP.Color
+    let settingsCardForegroundPointerOver: UWP.Color
+    let settingsCardForegroundPressed: UWP.Color
+    let settingsCardForegroundDisabled: UWP.Color
+
+    let settingsCardBorderBrush: UWP.Color
+    let settingsCardBorderBrushPointerOver: UWP.Color
+    let settingsCardBorderBrushPressed: UWP.Color
+    let settingsCardBorderBrushDisabled: UWP.Color
+
+    let divider: UWP.Color
+    let secondary: UWP.Color
+
+    static let light = SettingsBrushPalette(
+        settingsCardBackground: UWP.Color(a: 0xB3, r: 0xFF, g: 0xFF, b: 0xFF),
+        settingsCardBackgroundPointerOver: UWP.Color(a: 0x80, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardBackgroundPressed: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardBackgroundDisabled: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+
+        settingsCardForeground: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardForegroundPointerOver: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardForegroundPressed: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardForegroundDisabled: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+
+        settingsCardBorderBrush: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+        settingsCardBorderBrushPointerOver: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+        settingsCardBorderBrushPressed: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+        settingsCardBorderBrushDisabled: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+
+        divider: UWP.Color(a: 15, r: 0, g: 0, b: 0),
+        secondary: UWP.Color(a: 255, r: 96, g: 104, b: 112)
+    )
+
+    static let dark = SettingsBrushPalette(
+        settingsCardBackground: UWP.Color(a: 0x0D, r: 0xFF, g: 0xFF, b: 0xFF),
+        settingsCardBackgroundPointerOver: UWP.Color(a: 0x15, r: 0xFF, g: 0xFF, b: 0xFF),
+        settingsCardBackgroundPressed: UWP.Color(a: 0x08, r: 0xFF, g: 0xFF, b: 0xFF),
+        settingsCardBackgroundDisabled: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+
+        settingsCardForeground: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardForegroundPointerOver: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardForegroundPressed: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+        settingsCardForegroundDisabled: UWP.Color(a: 0x4D, r: 0xF9, g: 0xF9, b: 0xF9),
+
+        settingsCardBorderBrush: UWP.Color(a: 25, r: 255, g: 255, b: 255),
+        settingsCardBorderBrushPointerOver: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+        settingsCardBorderBrushPressed: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+        settingsCardBorderBrushDisabled: UWP.Color(a: 0x19, r: 0x00, g: 0x00, b: 0x00),
+
+        divider: UWP.Color(a: 24, r: 255, g: 255, b: 255),
+        secondary: UWP.Color(a: 255, r: 174, g: 178, b: 190)
+    )
+
+    static let automatic = dark
+}
+
+private func settingsBrushPalette(for mode: SettingsBrushMode) -> SettingsBrushPalette {
+    switch mode {
+    case .light:
+        return .light
+    case .dark:
+        return .dark
+    case .automatic:
+        return .automatic
+    }
+}
+
+private func settingsBrushPalette(for theme: AppTheme = App.context.theme) -> SettingsBrushPalette {
+    settingsBrushPalette(for: SettingsBrushMode(theme: theme))
+}
+
+func cardBackgroundBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardBackground)
+}
+
+func cardHoverBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardBackgroundPointerOver)
+}
+
+func cardPressedBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardBackgroundPressed)
+}
+
+func cardBorderBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardBorderBrush)
+}
+
+func dividerBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).divider)
+}
+
+func secondaryBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).secondary)
+}
