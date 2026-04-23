@@ -108,6 +108,19 @@ func cardPressedBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBr
     WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardBackgroundPressed)
 }
 
+func cardForegroundBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardForeground)
+}
+
+func cardForegroundHoverBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardForegroundPointerOver)
+}
+
+func cardForegroundPressedBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
+    WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardForegroundPressed)
+}
+
+
 func cardBorderBrush(theme: AppTheme = App.context.theme) -> WinUI.SolidColorBrush {
     WinUI.SolidColorBrush(settingsBrushPalette(for: theme).settingsCardBorderBrush)
 }

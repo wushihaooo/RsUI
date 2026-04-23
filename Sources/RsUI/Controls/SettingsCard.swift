@@ -70,6 +70,7 @@ public class SettingsCard: ButtonBase {
         cardBorder.cornerRadius = WinUI.CornerRadius(topLeft: 4, topRight: 4, bottomRight: 4, bottomLeft: 4)
         cardBorder.background = cardBackgroundBrush()
         cardBorder.borderBrush = cardBorderBrush()
+        self.foreground = cardForegroundBrush()
 
         self.content = cardBorder
     }
@@ -236,16 +237,19 @@ public class SettingsCard: ButtonBase {
     private func goToNormalState() {
         cardBorder.background = cardBackgroundBrush()
         cardBorder.borderBrush = cardBorderBrush()
+        self.foreground = cardForegroundBrush()
     }
 
     private func goToPointerOverState() {
         cardBorder.background = cardHoverBrush()
         cardBorder.borderBrush = cardBorderBrushPointerOver()
+        self.foreground = cardForegroundHoverBrush()
     }
 
     private func goToPressedState() {
         cardBorder.background = cardPressedBrush()
         cardBorder.borderBrush = cardBorderBrushPressed()
+        self.foreground = cardForegroundPressedBrush()
     }
 
     // MARK: - Layout builder
