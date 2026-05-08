@@ -44,6 +44,14 @@ class MainWindow: Window {
     private var openInNewTabRequested: Bool = false
     private var initialNavigationURL: URL? = nil
     private var tabDragHintBorder: Border? = nil
+    private var draggingTabForDrop: MainWindowTab? = nil
+    private var dragDroppedOutside = false
+
+    private struct DragState {
+        let sourceWindowID: ObjectIdentifier
+        let tabURL: URL
+    }
+    private static var activeDrag: DragState? = nil
 
     /// UI 主要组件
     private static func makeNavButton(glyph: String, action: @escaping () -> Void) -> Button {
@@ -186,6 +194,7 @@ class MainWindow: Window {
         tabs.margin = Thickness(left: 0, top: -1, right: 0, bottom: 0)
         tabs.canDragTabs = true
         tabs.canReorderTabs = true
+        tabs.allowDrop = true
         return tabs
     } ()
     private lazy var tabContentHost = Grid()
@@ -366,27 +375,57 @@ class MainWindow: Window {
             self?.openNewTabFromTabStrip()
         }
 
-        tabView.tabDroppedOutside.addHandler { [weak self] _, args in
-            print("[TabDrag] tabDroppedOutside fired, args=\(String(describing: args)), tab=\(String(describing: args?.tab))")
-            guard let self, let args, let item = args.tab else {
-                print("[TabDrag] guard failed: self=\(self != nil), args=\(args != nil)")
-                return
+        // Source: record which tab is being dragged and expose it via static state for cross-window drop
+        tabView.tabDragStarting.addHandler { [weak self] _, args in
+            guard let self, let args, let item = args.tab else { return }
+            guard let tab = self.tab(for: item) else { return }
+            guard let url = tab.currentPage?.url else { return }
+            self.draggingTabForDrop = tab
+            MainWindow.activeDrag = DragState(sourceWindowID: ObjectIdentifier(self), tabURL: url)
+        }
+
+        // Source: flag that the tab was physically dropped outside (vs drag cancelled by Escape)
+        tabView.tabDroppedOutside.addHandler { [weak self] _, _ in
+            self?.dragDroppedOutside = true
+        }
+
+        // Source: decide outcome once drag completes
+        tabView.tabDragCompleted.addHandler { [weak self] _, args in
+            guard let self, let args else { return }
+            let wasDroppedOutside = self.dragDroppedOutside
+            defer {
+                self.dragDroppedOutside = false
+                self.draggingTabForDrop = nil
+                MainWindow.activeDrag = nil
             }
-            guard let tab = self.tab(for: item) else {
-                print("[TabDrag] tab(for:) returned nil for item.name=\(item.name), tabIDByName=\(self.tabIDByName.keys.joined(separator: ","))")
-                return
+            guard let tab = self.draggingTabForDrop else { return }
+            guard self.viewModel.tabs.count > 1 else { return }
+            guard self.viewModel.tabs.contains(where: { $0 === tab }) else { return }
+
+            if args.dropResult == .none {
+                // No valid drop target accepted the drag; tear-off only when physically dropped (not Escape)
+                guard wasDroppedOutside else { return }
+                let url = tab.currentPage?.url
+                self.viewModel.close(tab: tab)
+                self.renderSelectedTab()
+                if let url { MainWindow.openDetachedWindow(navigatingTo: url) }
+            } else {
+                // Another window's TabView accepted the drop; close the tab from this window
+                self.viewModel.close(tab: tab)
+                self.renderSelectedTab()
             }
-            guard self.viewModel.tabs.count > 1 else {
-                print("[TabDrag] only 1 tab, skipping detach")
-                return
-            }
-            let url = tab.currentPage?.url
-            print("[TabDrag] detaching tab, navigating new window to \(url?.absoluteString ?? "nil")")
-            self.viewModel.close(tab: tab)
-            self.renderSelectedTab()
-            if let url {
-                MainWindow.openDetachedWindow(navigatingTo: url)
-            }
+        }
+
+        // Destination: accept tab drops from other windows' TabViews
+        tabView.dragOver.addHandler { [weak self] _, args in
+            guard let self, let args else { return }
+            guard let drag = MainWindow.activeDrag, drag.sourceWindowID != ObjectIdentifier(self) else { return }
+            args.acceptedOperation = .move
+        }
+        tabView.drop.addHandler { [weak self] _, _ in
+            guard let self else { return }
+            guard let drag = MainWindow.activeDrag, drag.sourceWindowID != ObjectIdentifier(self) else { return }
+            _ = self.navigate(to: drag.tabURL, transitionInfoOverride: SuppressNavigationTransitionInfo(), inNewTab: true)
         }
 
         setupTabDragHint()
@@ -494,6 +533,9 @@ class MainWindow: Window {
         guard ids != tabStripIDs else {
             return
         }
+
+        isSyncingTabSelection = true
+        defer { isSyncingTabSelection = false }
 
         while items.size > viewModel.tabs.count {
             items.removeAt(items.size - 1)
@@ -675,7 +717,7 @@ class MainWindow: Window {
 
     private func setupTabDragHint() {
         let hintText = TextBlock()
-        hintText.text = tr("拖动标签到窗口外，释放可分离为独立窗口")
+        hintText.text = tr("拖到其他窗口可合并，拖到窗口外释放可分离为新窗口")
         hintText.fontSize = 12
         hintText.textWrapping = .wrap
         hintText.maxWidth = 460
