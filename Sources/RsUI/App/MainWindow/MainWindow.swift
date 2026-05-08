@@ -42,6 +42,8 @@ class MainWindow: Window {
     private let splitterWidth: Double = 6
 
     private var openInNewTabRequested: Bool = false
+    private var initialNavigationURL: URL? = nil
+    private var tabDragHintBorder: Border? = nil
 
     /// UI 主要组件
     private static func makeNavButton(glyph: String, action: @escaping () -> Void) -> Button {
@@ -182,6 +184,8 @@ class MainWindow: Window {
         tabs.tabStripHeader = closeOtherTabsButton
         tabs.padding = Thickness(left: 0, top: 0, right: 0, bottom: 0)
         tabs.margin = Thickness(left: 0, top: -1, right: 0, bottom: 0)
+        tabs.canDragTabs = true
+        tabs.canReorderTabs = true
         return tabs
     } ()
     private lazy var tabContentHost = Grid()
@@ -204,6 +208,8 @@ class MainWindow: Window {
         return grid
     } ()
     private var tabItemsByID: [ObjectIdentifier: TabViewItem] = [:]
+    // Stable string name keyed to tab identity — avoids WinRT projection object identity instability
+    private var tabIDByName: [String: ObjectIdentifier] = [:]
     private var tabFramesByID: [ObjectIdentifier: PageTransitionHost] = [:]
     private var tabPageViewPartsByID: [ObjectIdentifier: PageViewParts] = [:]
     private var tabStripIDs: [ObjectIdentifier] = []
@@ -360,6 +366,31 @@ class MainWindow: Window {
             self?.openNewTabFromTabStrip()
         }
 
+        tabView.tabDroppedOutside.addHandler { [weak self] _, args in
+            print("[TabDrag] tabDroppedOutside fired, args=\(String(describing: args)), tab=\(String(describing: args?.tab))")
+            guard let self, let args, let item = args.tab else {
+                print("[TabDrag] guard failed: self=\(self != nil), args=\(args != nil)")
+                return
+            }
+            guard let tab = self.tab(for: item) else {
+                print("[TabDrag] tab(for:) returned nil for item.name=\(item.name), tabIDByName=\(self.tabIDByName.keys.joined(separator: ","))")
+                return
+            }
+            guard self.viewModel.tabs.count > 1 else {
+                print("[TabDrag] only 1 tab, skipping detach")
+                return
+            }
+            let url = tab.currentPage?.url
+            print("[TabDrag] detaching tab, navigating new window to \(url?.absoluteString ?? "nil")")
+            self.viewModel.close(tab: tab)
+            self.renderSelectedTab()
+            if let url {
+                MainWindow.openDetachedWindow(navigatingTo: url)
+            }
+        }
+
+        setupTabDragHint()
+
         navigationView.paneClosed.addHandler { [weak self] _, _ in
             self?.splitterBorder.visibility = .collapsed
         }
@@ -454,6 +485,7 @@ class MainWindow: Window {
         let ids = viewModel.tabs.map { ObjectIdentifier($0) }
         let activeIDs = Set(ids)
         tabItemsByID = tabItemsByID.filter { activeIDs.contains($0.key) }
+        tabIDByName = tabIDByName.filter { activeIDs.contains($0.value) }
         tabTitlesByID = tabTitlesByID.filter { activeIDs.contains($0.key) }
         tabClosableByID = tabClosableByID.filter { activeIDs.contains($0.key) }
         tabPageViewPartsByID = tabPageViewPartsByID.filter { activeIDs.contains($0.key) }
@@ -503,6 +535,9 @@ class MainWindow: Window {
         }
 
         let item = TabViewItem()
+        let name = id.debugDescription
+        item.name = name
+        tabIDByName[name] = id
         item.tapped.addHandler { [weak self, weak item] _, _ in
             guard let self, let item, let tab = self.tab(for: item) else { return }
             self.switchToTab(tab)
@@ -592,6 +627,11 @@ class MainWindow: Window {
     }
 
     private func tab(for item: TabViewItem) -> MainWindowTab? {
+        // Primary: stable name-based lookup (avoids WinRT projection identity instability)
+        if let id = tabIDByName[item.name], let tab = viewModel.tabs.first(where: { ObjectIdentifier($0) == id }) {
+            return tab
+        }
+        // Fallback: identity comparison
         for tab in viewModel.tabs {
             if tabItemsByID[ObjectIdentifier(tab)] === item {
                 return tab
@@ -631,6 +671,47 @@ class MainWindow: Window {
     private func closeOtherTabs() {
         viewModel.closeOtherTabs()
         renderSelectedTab()
+    }
+
+    private func setupTabDragHint() {
+        let hintText = TextBlock()
+        hintText.text = tr("拖动标签到窗口外，释放可分离为独立窗口")
+        hintText.fontSize = 12
+        hintText.textWrapping = .wrap
+        hintText.maxWidth = 460
+        hintText.foreground = SolidColorBrush(UWP.Color(a: 255, r: 245, g: 249, b: 255))
+
+        let hintBorder = Border()
+        hintBorder.background = SolidColorBrush(UWP.Color(a: 230, r: 21, g: 94, b: 175))
+        hintBorder.borderBrush = SolidColorBrush(UWP.Color(a: 255, r: 166, g: 215, b: 255))
+        hintBorder.borderThickness = Thickness(left: 1, top: 1, right: 1, bottom: 1)
+        hintBorder.cornerRadius = CornerRadius(topLeft: 10, topRight: 10, bottomRight: 10, bottomLeft: 10)
+        hintBorder.padding = Thickness(left: 12, top: 8, right: 12, bottom: 8)
+        hintBorder.horizontalAlignment = .center
+        hintBorder.verticalAlignment = .top
+        hintBorder.margin = Thickness(left: 0, top: 12, right: 0, bottom: 0)
+        hintBorder.opacity = 0
+        hintBorder.visibility = .collapsed
+        hintBorder.isHitTestVisible = false
+        hintBorder.child = hintText
+        try? Canvas.setZIndex(hintBorder, 99)
+        tabContentHost.children.append(hintBorder)
+        tabDragHintBorder = hintBorder
+
+        tabView.tabDragStarting.addHandler { [weak hintBorder] _, _ in
+            hintBorder?.visibility = .visible
+            hintBorder?.opacity = 1
+        }
+        tabView.tabDragCompleted.addHandler { [weak hintBorder] _, _ in
+            hintBorder?.opacity = 0
+            hintBorder?.visibility = .collapsed
+        }
+    }
+
+    static func openDetachedWindow(navigatingTo url: URL) {
+        let window = MainWindow()
+        window.initialNavigationURL = url
+        try? window.activate()
     }
 
     private func firstNavigationItemURL() -> URL? {
@@ -800,6 +881,12 @@ class MainWindow: Window {
             for item in module.navigationViewFooterMenuItemsRequired(in: context) {
                 appendNavigationItem(item, true)
             }
+        }
+
+        if let url = initialNavigationURL {
+            initialNavigationURL = nil
+            _ = navigate(to: url, transitionInfoOverride: SuppressNavigationTransitionInfo())
+            return
         }
 
         if let page = viewModel.currentPage {

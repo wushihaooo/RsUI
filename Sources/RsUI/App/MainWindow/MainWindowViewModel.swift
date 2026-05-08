@@ -158,6 +158,29 @@ class MainWindowViewModel {
         navigationRevision += 1
     }
 
+    /// Removes a tab for transfer to another window; unlike close(tab:), allows removing with only 1 tab remaining.
+    func detachTab(_ tab: MainWindowTab) {
+        guard let index = tabs.firstIndex(where: { $0 === tab }) else { return }
+        let wasSelected = selectedTab === tab
+        tabs.remove(at: index)
+        if wasSelected {
+            selectedTab = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)]
+            routePreferences.lastPageURL = selectedTab?.currentPage?.url
+        }
+        syncLegacyHistory()
+        navigationRevision += 1
+    }
+
+    /// Seeds this ViewModel with a tab transferred from another window.
+    func setTransferredTab(_ tab: MainWindowTab) {
+        tab.needsRender = true
+        tabs = [tab]
+        selectedTab = tab
+        routePreferences.lastPageURL = tab.currentPage?.url
+        syncLegacyHistory()
+        navigationRevision += 1
+    }
+
     func dumpHistory() {
         for (index, page) in (selectedTab?.backwardPages ?? []).enumerated() {
             log.info("\(index) <===\(page.url)")
