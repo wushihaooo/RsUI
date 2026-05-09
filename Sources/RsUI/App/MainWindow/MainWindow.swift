@@ -43,6 +43,8 @@ class MainWindow: Window {
 
     private var openInNewTabRequested: Bool = false
     private var initialNavigationURL: URL? = nil
+    /// VSCode 风格的「最大化编辑区」状态：开启后隐藏 NavigationView 侧边栏，让 TabView + 内容占满
+    private var isMaximized: Bool = false
     private var tabDragHintBorder: Border? = nil
     private var draggingTabForDrop: MainWindowTab? = nil
     private var dragDroppedOutside = false
@@ -98,11 +100,11 @@ class MainWindow: Window {
     }
     private lazy var maximizeTabButton: Button = {
         let btn = MainWindow.makeNavButton(glyph: "\u{E740}") { [weak self] in
-            self?.maximizeSelectedTab()
+            self?.toggleMaximize()
         }
         btn.isEnabled = true
         let toolTip = ToolTip()
-        toolTip.content = tr("最大化此标签")
+        toolTip.content = tr("最大化编辑区")
         try? ToolTipService.setToolTip(btn, toolTip)
         return btn
     }()
@@ -737,38 +739,22 @@ class MainWindow: Window {
         renderSelectedTab()
     }
 
-    /// 将当前选中的 Tab 全屏化为独立窗口（无 NavigationView / 无前进后退）。
-    /// 单 tab 场景下原窗口会被掏空 → 顺便关闭原窗口。
-    private func maximizeSelectedTab() {
-        guard let tab = viewModel.selectedTab, let url = tab.currentPage?.url else { return }
+    /// VSCode 风格的「最大化编辑区」切换：在同一个窗口内隐藏/显示 NavigationView 侧边栏，
+    /// 让 TabView + 内容区充满可见区域。不开新窗口、不动 Tab 数据。
+    private func toggleMaximize() {
+        isMaximized.toggle()
+        navigationView.isPaneVisible = !isMaximized
+        applyMaximizeButtonAppearance()
+    }
 
-        // 用 MainWindow 自己的 WindowContext 重新解析一份 Page —— 避免直接把 UIElement
-        // 在两个窗口之间转移（参考 openDetachedWindow / tear-off 的同款约束）。
-        let context = WindowContext(owner: self)
-        var resolvedPage: Page? = nil
-        if url == SettingsPage.url {
-            resolvedPage = SettingsPage()
-        } else {
-            for module in App.context.modules {
-                if let page = module.navigationRequested(for: url, in: context) {
-                    resolvedPage = page
-                    break
-                }
-            }
+    /// 根据 isMaximized 切换按钮图标 + tooltip：展开 → 还原。
+    private func applyMaximizeButtonAppearance() {
+        if let icon = maximizeTabButton.content as? FontIcon {
+            icon.glyph = isMaximized ? "\u{E73F}" : "\u{E740}"
         }
-        guard let page = resolvedPage else { return }
-
-        let displayTitle = title(for: page)
-        FullscreenWindow.open(page: page, displayTitle: displayTitle)
-
-        if viewModel.tabs.count > 1 {
-            viewModel.close(tab: tab)
-            renderSelectedTab()
-        } else {
-            // 最后一个 tab：从 viewModel 移除并关闭原窗口（避免遗留空窗口）
-            viewModel.detachTab(tab)
-            try? close()
-        }
+        let toolTip = ToolTip()
+        toolTip.content = tr(isMaximized ? "还原编辑区" : "最大化编辑区")
+        try? ToolTipService.setToolTip(maximizeTabButton, toolTip)
     }
 
     private func setupTabDragHint() {
