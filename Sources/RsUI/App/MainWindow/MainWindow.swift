@@ -96,6 +96,16 @@ class MainWindow: Window {
         self.viewModel.goForward(MainWindow.makeSlideTransition(effect: .fromRight))
         self.renderSelectedTab()
     }
+    private lazy var maximizeTabButton: Button = {
+        let btn = MainWindow.makeNavButton(glyph: "\u{E740}") { [weak self] in
+            self?.maximizeSelectedTab()
+        }
+        btn.isEnabled = true
+        let toolTip = ToolTip()
+        toolTip.content = tr("最大化此标签")
+        try? ToolTipService.setToolTip(btn, toolTip)
+        return btn
+    }()
     private lazy var closeOtherTabsButton: Button = {
         let icon = FontIcon()
         icon.glyph = "\u{E8BB}"
@@ -145,6 +155,15 @@ class MainWindow: Window {
         panel.orientation = .horizontal
         return panel
     } ()
+    /// 把模块右侧项 + 框架按钮（最大化）拼到一起，整体作为 TitleBar.rightHeader。
+    /// titleBarRightHeader 仍然是模块项的容器，applyAppearance 里 clear/append 不影响 host 里的框架按钮。
+    private lazy var titleBarRightHeaderHost: StackPanel = {
+        let panel = StackPanel()
+        panel.orientation = .horizontal
+        panel.children.append(titleBarRightHeader)
+        panel.children.append(maximizeTabButton)
+        return panel
+    } ()
     private lazy var titleBar = {
         let bar = TitleBar()
         bar.height = 48
@@ -175,7 +194,7 @@ class MainWindow: Window {
             barContentStackPanel.children.append(searchBox)
         }
 
-        bar.rightHeader = titleBarRightHeader
+        bar.rightHeader = titleBarRightHeaderHost
 
         bar.paneToggleRequested.addHandler { [weak self] _, _ in
             guard let self else { return }
@@ -462,13 +481,16 @@ class MainWindow: Window {
             }
         }
 
+        // viewModel 在 closed handler 里会被设为 nil（包括最大化最后一个 tab 的场景），
+        // 此处必须用 ?. 避免 IUO 强解包崩溃；renderSelectedTab 也会再做一次 nil 检查
         let route = Observations {
-            self.viewModel.navigationRevision
+            self.viewModel?.navigationRevision ?? 0
         }
         Task { [weak self] in
             for await _ in route {
                 await MainActor.run { [weak self] in
-                    self?.renderSelectedTab()
+                    guard let self, self.viewModel != nil else { return }
+                    self.renderSelectedTab()
                 }
             }
         }
@@ -713,6 +735,40 @@ class MainWindow: Window {
     private func closeOtherTabs() {
         viewModel.closeOtherTabs()
         renderSelectedTab()
+    }
+
+    /// 将当前选中的 Tab 全屏化为独立窗口（无 NavigationView / 无前进后退）。
+    /// 单 tab 场景下原窗口会被掏空 → 顺便关闭原窗口。
+    private func maximizeSelectedTab() {
+        guard let tab = viewModel.selectedTab, let url = tab.currentPage?.url else { return }
+
+        // 用 MainWindow 自己的 WindowContext 重新解析一份 Page —— 避免直接把 UIElement
+        // 在两个窗口之间转移（参考 openDetachedWindow / tear-off 的同款约束）。
+        let context = WindowContext(owner: self)
+        var resolvedPage: Page? = nil
+        if url == SettingsPage.url {
+            resolvedPage = SettingsPage()
+        } else {
+            for module in App.context.modules {
+                if let page = module.navigationRequested(for: url, in: context) {
+                    resolvedPage = page
+                    break
+                }
+            }
+        }
+        guard let page = resolvedPage else { return }
+
+        let displayTitle = title(for: page)
+        FullscreenWindow.open(page: page, displayTitle: displayTitle)
+
+        if viewModel.tabs.count > 1 {
+            viewModel.close(tab: tab)
+            renderSelectedTab()
+        } else {
+            // 最后一个 tab：从 viewModel 移除并关闭原窗口（避免遗留空窗口）
+            viewModel.detachTab(tab)
+            try? close()
+        }
     }
 
     private func setupTabDragHint() {
