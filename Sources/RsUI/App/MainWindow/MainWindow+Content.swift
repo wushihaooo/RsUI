@@ -89,7 +89,7 @@ extension MainWindow {
             let selectedIndex = self.viewModel.tabs.firstIndex(where: { $0 === tab })
             log.info("[TabDrag] start viaArgsIndex=\(viaArgsIndex.map(String.init) ?? "nil") selectedIndex=\(selectedIndex.map(String.init) ?? "nil") draggURL=\(url.lastPathComponent)")
             self.draggingTabForDrop = tab
-            MainWindow.activeDrag = DragState(sourceWindowID: ObjectIdentifier(self), tabURL: url)
+            MainWindow.activeDrag = DragState(sourceWindowID: ObjectIdentifier(self), tab: tab, tabURL: url)
         }
 
         // Source: flag that the tab was physically dropped outside (vs drag cancelled by Escape).
@@ -118,14 +118,17 @@ extension MainWindow {
 
             if args.dropResult == .none {
                 guard wasDroppedOutside else { return }
-                let url = tab.currentPage?.url
-                log.info("[TabDrag] -> tearOff url=\(url?.lastPathComponent ?? "nil")")
-                self.viewModel.close(tab: tab)
+                log.info("[TabDrag] -> tearOff url=\(tab.currentPage?.url.lastPathComponent ?? "nil")")
+                // Transfer the tab object itself (not just its URL) so its
+                // back/forward history moves with it to the new window.
+                self.viewModel.detachTab(tab)
                 self.renderSelectedTab()
-                if let url { MainWindow.openDetachedWindow(navigatingTo: url) }
+                MainWindow.openDetachedWindow(transferring: tab)
             } else if didMerge {
-                log.info("[TabDrag] -> merge (close source) url=\(tab.currentPage?.url.lastPathComponent ?? "nil")")
-                self.viewModel.close(tab: tab)
+                log.info("[TabDrag] -> merge (detach source) url=\(tab.currentPage?.url.lastPathComponent ?? "nil")")
+                // The destination window already adopted this tab object in its
+                // drop handler, so just detach it here (don't close/destroy it).
+                self.viewModel.detachTab(tab)
                 self.renderSelectedTab()
             } else {
                 // In-window reorder: WinUI already moved the strip item, so just
@@ -146,7 +149,11 @@ extension MainWindow {
             guard let drag = MainWindow.activeDrag, drag.sourceWindowID != ObjectIdentifier(self) else { return }
             log.info("[TabDrag] drop(dest) acceptURL=\(drag.tabURL.lastPathComponent)")
             MainWindow.dragMergedIntoOtherWindow = true
-            _ = self.navigate(to: drag.tabURL, mode: .newTab, transitionInfoOverride: SuppressNavigationTransitionInfo())
+            // Adopt the dragged tab object itself so its back/forward history
+            // survives the merge. The source window detaches it in its own
+            // tabDragCompleted handler, which fires right after this returns.
+            self.viewModel.adoptTab(drag.tab, transitionInfoOverride: SuppressNavigationTransitionInfo())
+            self.renderSelectedTab()
         }
     }
 

@@ -21,6 +21,8 @@ class MainWindow: Window {
     var openInNewTabRequested: Bool = false
     var initialNavigationURL: URL? = nil
     var initialPageFactory: ((WindowContext) -> Page)? = nil
+    // A tab object transferred from another window (tab tear-off).
+    var initialTransferredTab: MainWindowTab? = nil
     var initialNavigationTransitionInfoOverride: NavigationTransitionInfo? = nil
     // nil → 使用 windowLayout 中持久化的 NavPane 状态；否则强制覆盖初始展开/折叠
     var initialNavigationViewPaneOpen: Bool? = nil
@@ -39,6 +41,11 @@ class MainWindow: Window {
 
     struct DragState {
         let sourceWindowID: ObjectIdentifier
+        // The dragged tab object itself, so a cross-window merge can adopt it
+        // (preserving back/forward history) instead of re-navigating by URL.
+        // Safe to share because drag-drop is single-pointer and runs entirely
+        // on the UI thread, so only one drag is ever in flight.
+        let tab: MainWindowTab
         let tabURL: URL
     }
     static var activeDrag: DragState? = nil

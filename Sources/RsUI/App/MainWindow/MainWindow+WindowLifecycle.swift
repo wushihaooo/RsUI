@@ -97,6 +97,14 @@ extension MainWindow {
             }
         }
 
+        if let transferredTab = initialTransferredTab {
+            initialTransferredTab = nil
+            initialNavigationTransitionInfoOverride = nil
+            viewModel.setTransferredTab(transferredTab)
+            renderSelectedTab()
+            return
+        }
+
         if let makeInitialPage = initialPageFactory {
             initialPageFactory = nil
             let transitionInfoOverride = initialNavigationTransitionInfoOverride ?? SuppressNavigationTransitionInfo()

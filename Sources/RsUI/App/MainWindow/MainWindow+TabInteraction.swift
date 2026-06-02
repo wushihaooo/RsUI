@@ -132,6 +132,15 @@ extension MainWindow {
         try? window.activate()
     }
 
+    // Opens a new window seeded with an existing tab object (tab tear-off),
+    // preserving its back/forward history. The tab must already be detached
+    // from its source window's view model before calling this.
+    static func openDetachedWindow(transferring tab: MainWindowTab) {
+        let window = MainWindow()
+        window.initialTransferredTab = tab
+        try? window.activate()
+    }
+
     static func openDetachedWindow(
         opening page: Page,
         transitionInfoOverride: NavigationTransitionInfo? = nil
