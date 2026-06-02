@@ -2,6 +2,7 @@ import Foundation
 import WindowsFoundation
 import UWP
 import WinUI
+import RsHelper
 
 extension MainWindow {
     func renderSelectedTab() {
@@ -109,6 +110,30 @@ extension MainWindow {
         }
         tabStripIDs = ids
         updateAllTabItemCloseStates()
+    }
+
+    // After an in-window drag reorder WinUI has already moved the TabViewItems,
+    // but viewModel.tabs still holds the old order. Rebuild it from the strip so
+    // the reorder survives later add/close operations, which re-sync items to
+    // the model order and would otherwise snap the tabs back.
+    func syncTabOrderFromStrip() {
+        guard let items = tabView.tabItems else { return }
+        var reordered: [MainWindowTab] = []
+        var i: UInt32 = 0
+        while i < items.size {
+            if let item = items.getAt(i) as? TabViewItem, let tab = tab(for: item) {
+                reordered.append(tab)
+            }
+            i += 1
+        }
+        guard reordered.count == viewModel.tabs.count else { return }
+        // DIAGNOSTIC (temporary): a true reorder must be a permutation. If item
+        // identity resolution misfires, this can contain a duplicate / drop one.
+        let uniqueIDs = Set(reordered.map { ObjectIdentifier($0) })
+        let order = reordered.map { $0.currentPage?.url.lastPathComponent ?? "nil" }.joined(separator: " | ")
+        log.info("[TabDrag] syncOrder unique=\(uniqueIDs.count)/\(reordered.count) order=[\(order)]")
+        viewModel.reorder(to: reordered)
+        tabStripIDs = reordered.map { ObjectIdentifier($0) }
     }
 
     private func tabViewItem(_ item: TabViewItem?, represents id: ObjectIdentifier) -> Bool {

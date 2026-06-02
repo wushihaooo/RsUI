@@ -42,6 +42,11 @@ class MainWindow: Window {
         let tabURL: URL
     }
     static var activeDrag: DragState? = nil
+    // Set by a destination window's drop handler when a tab from another window
+    // is merged in. The source reads it in tabDragCompleted to tell a real
+    // cross-window merge (close the source tab) apart from an in-window reorder,
+    // which also reports dropResult == .move but must keep the tab.
+    static var dragMergedIntoOtherWindow = false
 
     // 持有 Observation Task 句柄，窗口关闭时 cancel，避免死窗口的 task 继续访问失效的 self.appWindow / self.viewModel
     var envObservationTask: Task<Void, Never>?

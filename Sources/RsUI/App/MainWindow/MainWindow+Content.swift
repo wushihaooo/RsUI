@@ -2,6 +2,7 @@ import Foundation
 import WindowsFoundation
 import UWP
 import WinUI
+import RsHelper
 
 extension MainWindow {
     func setupContent() {
@@ -74,15 +75,26 @@ extension MainWindow {
 
         // Source: record which tab is being dragged and expose it via static state for cross-window drop.
         tabView.tabDragStarting.addHandler { [weak self] _, args in
-            guard let self, let args, let item = args.tab else { return }
-            guard let tab = self.tab(for: item) else { return }
+            guard let self, let args, args.tab != nil else { return }
+            // args.tab is unreliable here: because TabItems hold TabViewItems
+            // directly (no ItemsSource), it resolves to the first strip item
+            // regardless of which tab is dragged. WinUI selects the pressed tab
+            // before the drag begins, so the selected tab IS the dragged one.
+            guard let tab = self.viewModel.selectedTab else { return }
             guard let url = tab.currentPage?.url else { return }
+            // DIAGNOSTIC (temporary): viaArgsIndex should show the buggy 0 while
+            // selectedIndex tracks the real dragged tab — confirms the fix.
+            let viaArgsIndex = (args.tab).flatMap { self.tab(for: $0) }
+                .flatMap { r in self.viewModel.tabs.firstIndex(where: { $0 === r }) }
+            let selectedIndex = self.viewModel.tabs.firstIndex(where: { $0 === tab })
+            log.info("[TabDrag] start viaArgsIndex=\(viaArgsIndex.map(String.init) ?? "nil") selectedIndex=\(selectedIndex.map(String.init) ?? "nil") draggURL=\(url.lastPathComponent)")
             self.draggingTabForDrop = tab
             MainWindow.activeDrag = DragState(sourceWindowID: ObjectIdentifier(self), tabURL: url)
         }
 
         // Source: flag that the tab was physically dropped outside (vs drag cancelled by Escape).
         tabView.tabDroppedOutside.addHandler { [weak self] _, _ in
+            log.info("[TabDrag] droppedOutside")
             self?.dragDroppedOutside = true
         }
 
@@ -90,10 +102,15 @@ extension MainWindow {
         tabView.tabDragCompleted.addHandler { [weak self] _, args in
             guard let self, let args else { return }
             let wasDroppedOutside = self.dragDroppedOutside
+            let didMerge = MainWindow.dragMergedIntoOtherWindow
+            // DIAGNOSTIC (temporary): record the inputs that pick the outcome.
+            let draggingIndex = self.viewModel.tabs.firstIndex(where: { $0 === self.draggingTabForDrop })
+            log.info("[TabDrag] completed dropResult=\(args.dropResult.rawValue) wasDroppedOutside=\(wasDroppedOutside) didMerge=\(didMerge) draggingIndex=\(draggingIndex.map(String.init) ?? "nil") draggingURL=\(self.draggingTabForDrop?.currentPage?.url.lastPathComponent ?? "nil") count=\(self.viewModel.tabs.count)")
             defer {
                 self.dragDroppedOutside = false
                 self.draggingTabForDrop = nil
                 MainWindow.activeDrag = nil
+                MainWindow.dragMergedIntoOtherWindow = false
             }
             guard let tab = self.draggingTabForDrop else { return }
             guard self.viewModel.tabs.count > 1 else { return }
@@ -102,12 +119,19 @@ extension MainWindow {
             if args.dropResult == .none {
                 guard wasDroppedOutside else { return }
                 let url = tab.currentPage?.url
+                log.info("[TabDrag] -> tearOff url=\(url?.lastPathComponent ?? "nil")")
                 self.viewModel.close(tab: tab)
                 self.renderSelectedTab()
                 if let url { MainWindow.openDetachedWindow(navigatingTo: url) }
-            } else {
+            } else if didMerge {
+                log.info("[TabDrag] -> merge (close source) url=\(tab.currentPage?.url.lastPathComponent ?? "nil")")
                 self.viewModel.close(tab: tab)
                 self.renderSelectedTab()
+            } else {
+                // In-window reorder: WinUI already moved the strip item, so just
+                // persist the new order to the view model.
+                log.info("[TabDrag] -> reorder")
+                self.syncTabOrderFromStrip()
             }
         }
 
@@ -120,6 +144,8 @@ extension MainWindow {
         tabView.drop.addHandler { [weak self] _, _ in
             guard let self else { return }
             guard let drag = MainWindow.activeDrag, drag.sourceWindowID != ObjectIdentifier(self) else { return }
+            log.info("[TabDrag] drop(dest) acceptURL=\(drag.tabURL.lastPathComponent)")
+            MainWindow.dragMergedIntoOtherWindow = true
             _ = self.navigate(to: drag.tabURL, mode: .newTab, transitionInfoOverride: SuppressNavigationTransitionInfo())
         }
     }
