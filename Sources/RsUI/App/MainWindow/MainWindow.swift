@@ -219,10 +219,16 @@ class MainWindow: Window {
         tabs.tabStripHeader = closeOtherTabsButton
         tabs.padding = Thickness(left: 0, top: 0, right: 0, bottom: 0)
         tabs.margin = Thickness(left: 0, top: -1, right: 0, bottom: 0)
+        // Tabs are draggable as a payload and reorderable within the strip.
+        // In-window reorder needs BOTH canReorderTabs and allowDropTabs.
         tabs.canDragTabs = true
         tabs.canReorderTabs = true
         tabs.allowDropTabs = true
+        // Native tab tear-out is off; cross-window tear-off and merge are
+        // hand-rolled on the generic drag-drop events instead.
         tabs.canTearOutTabs = false
+        // allowDrop enables the generic dragOver/drop handlers behind the
+        // hand-rolled cross-window merge, so it tracks the feature flag.
         tabs.allowDrop = MainWindow.isTabTearOffMergeEnabled
         return tabs
     } ()
