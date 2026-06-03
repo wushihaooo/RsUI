@@ -188,6 +188,17 @@ class MainWindowViewModel {
         tabs = reordered
     }
 
+    /// Moves a tab to a target slot (0-based, clamped), for live in-strip drag
+    /// reorder. The selected tab is unchanged.
+    func move(_ tab: MainWindowTab, to target: Int) {
+        guard let from = tabs.firstIndex(where: { $0 === tab }) else { return }
+        let dest = max(0, min(target, tabs.count - 1))
+        guard from != dest else { return }
+        tabs.remove(at: from)
+        tabs.insert(tab, at: dest)
+        navigationRevision += 1
+    }
+
     func closeOtherTabs() {
         guard let tab = selectedTab, tabs.count > 1 else { return }
         tabs = [tab]

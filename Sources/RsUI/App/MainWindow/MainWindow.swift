@@ -219,17 +219,14 @@ class MainWindow: Window {
         tabs.tabStripHeader = closeOtherTabsButton
         tabs.padding = Thickness(left: 0, top: 0, right: 0, bottom: 0)
         tabs.margin = Thickness(left: 0, top: -1, right: 0, bottom: 0)
-        // Tabs are draggable as a payload and reorderable within the strip.
-        // In-window reorder needs BOTH canReorderTabs and allowDropTabs.
-        tabs.canDragTabs = true
-        tabs.canReorderTabs = true
-        tabs.allowDropTabs = true
-        // Native tab tear-out is off; cross-window tear-off and merge are
-        // hand-rolled on the generic drag-drop events instead.
+        // Tab drag is handled manually by TabTearGesture (pointer events on each
+        // tab's header element), so disable every framework drag path: no OLE drag
+        // means no OS no-drop cursor, and canTearOutTabs off avoids the native
+        // per-tab-switch flicker.
+        tabs.canDragTabs = false
+        tabs.canReorderTabs = false
         tabs.canTearOutTabs = false
-        // allowDrop enables the generic dragOver/drop handlers behind the
-        // hand-rolled cross-window merge, so it tracks the feature flag.
-        tabs.allowDrop = MainWindow.isTabTearOffMergeEnabled
+        tabs.allowDropTabs = false
         return tabs
     } ()
     lazy var tabContentHost = Grid()
@@ -259,6 +256,10 @@ class MainWindow: Window {
     var tabStripIDs: [ObjectIdentifier] = []
     var tabTitlesByID: [ObjectIdentifier: String] = [:]
     var tabClosableByID: [ObjectIdentifier: Bool] = [:]
+    // The title TextBlock inside each tab's custom header element, so the title
+    // can be updated without rebuilding the header (whose pointer handlers drive
+    // the manual tear-out gesture).
+    var tabHeaderLabelsByID: [ObjectIdentifier: TextBlock] = [:]
     var visibleTabFrameID: ObjectIdentifier?
     var isFirstNavigation = true
     lazy var navigationView = {
@@ -305,6 +306,7 @@ class MainWindow: Window {
         setupWindow()
         setupContent()
         startObserving()
+        MainWindow.register(self)  // tear-out merge hit-test registry
     }
 
     private static func makeSlideTransition(effect: SlideNavigationTransitionEffect) -> NavigationTransitionInfo {

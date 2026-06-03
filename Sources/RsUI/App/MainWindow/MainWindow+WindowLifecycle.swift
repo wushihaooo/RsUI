@@ -19,6 +19,8 @@ extension MainWindow {
         self.closed.addHandler { [weak self] _, _ in
             guard let self else { return }
 
+            MainWindow.unregister(self)  // drop from tear-out registry
+
             // 先 cancel observation tasks，避免死窗口的 task 继续访问 self.appWindow / self.viewModel
             self.envObservationTask?.cancel()
             self.routeObservationTask?.cancel()

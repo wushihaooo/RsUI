@@ -58,6 +58,7 @@ extension MainWindow {
         tabIDByName = tabIDByName.filter { activeIDs.contains($0.value) }
         tabTitlesByID = tabTitlesByID.filter { activeIDs.contains($0.key) }
         tabClosableByID = tabClosableByID.filter { activeIDs.contains($0.key) }
+        tabHeaderLabelsByID = tabHeaderLabelsByID.filter { activeIDs.contains($0.key) }
         tabPageViewPartsByID = tabPageViewPartsByID.filter { activeIDs.contains($0.key) }
         removeClosedTabFrames(activeIDs: activeIDs)
 
@@ -174,6 +175,29 @@ extension MainWindow {
             guard let self, let item else { return }
             self.closeTab(for: item)
         }
+
+        // Custom header element so the manual tear-out gesture can receive pointer
+        // events: handlers on the TabViewItem itself never fire (it marks them
+        // Handled for its own selection visuals), but a child element sees them
+        // first during bubbling. The transparent background makes the whole header
+        // area hit-testable so a press anywhere on the tab starts the gesture.
+        let headerLabel = TextBlock()
+        headerLabel.verticalAlignment = .center
+        let headerHost = Border()
+        headerHost.background = SolidColorBrush(UWP.Color(a: 0, r: 0, g: 0, b: 0))
+        headerHost.child = headerLabel
+        item.header = headerHost
+        tabHeaderLabelsByID[id] = headerLabel
+        headerHost.pointerPressed.addHandler { [weak self, weak item, weak headerHost] _, args in
+            guard let self, let item, let headerHost, let args,
+                  let tab = self.tab(for: item) else { return }
+            TabTearGesture.shared.onPressed(window: self, tab: tab, element: headerHost, args: args)
+        }
+        headerHost.pointerReleased.addHandler { _, args in
+            guard let args else { return }
+            TabTearGesture.shared.onReleased(args: args)
+        }
+
         tabItemsByID[id] = item
         updateTabItemState(for: tab)
         return item
@@ -185,7 +209,7 @@ extension MainWindow {
 
         let newTitle = title(for: tab.currentPage)
         if tabTitlesByID[id] != newTitle {
-            item.header = newTitle
+            tabHeaderLabelsByID[id]?.text = newTitle
             tabTitlesByID[id] = newTitle
         }
 
