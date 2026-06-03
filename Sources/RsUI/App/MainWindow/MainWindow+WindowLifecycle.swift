@@ -97,6 +97,12 @@ extension MainWindow {
             }
         }
 
+        // An empty tear-out receiver: the torn tab is injected later by
+        // tabTearOutRequested, so skip all startup navigation and come up blank.
+        if awaitTransferredTab {
+            return
+        }
+
         if let transferredTab = initialTransferredTab {
             initialTransferredTab = nil
             initialNavigationTransitionInfoOverride = nil
@@ -140,6 +146,9 @@ extension MainWindow {
     }
     
     private func restoreWindowRect() {
+        // A tear-out receiver is positioned by the OS as it follows the cursor —
+        // don't restore the saved main-window rect over it.
+        guard !isTearOutWindow else { return }
         guard let hwnd = self.appWindow, let presenter = hwnd.presenter as? OverlappedPresenter
         else { return }
 

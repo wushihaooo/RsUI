@@ -51,6 +51,47 @@ extension MainWindow {
         renderSelectedTab()
     }
 
+    // MARK: - Native tear-out helpers
+
+    // Returns a window for the native tear-out to drop a tab into. Reuses the
+    // current empty spare if one exists (the framework asks repeatedly during a
+    // drag); otherwise creates and activates a fresh one so it owns a valid
+    // AppWindow.Id. The OS positions it as it follows the cursor.
+    static func tearOutReceiver() -> MainWindow {
+        if let spare = MainWindow.spareReceiver, spare.viewModel?.tabs.isEmpty ?? false {
+            return spare
+        }
+        let window = MainWindow(tearOutReceiver: true)
+        try? window.activate()
+        MainWindow.spareReceiver = window
+        return window
+    }
+
+    // Removes a tab from this window's model (its strip item is reconciled away
+    // by renderSelectedTab); the MainWindowTab object — with its history — lives
+    // on to be adopted elsewhere.
+    func releaseTab(_ tab: MainWindowTab) {
+        guard viewModel != nil else { return }
+        viewModel.detachTab(tab)
+        renderSelectedTab()
+    }
+
+    // Adopts a torn tab into this window's model, building a fresh strip item for
+    // it. `at` is the merge drop position; nil appends (the empty-receiver case).
+    func adoptTornTab(_ tab: MainWindowTab, at index: Int? = nil) {
+        guard viewModel != nil else { return }
+        awaitTransferredTab = false
+        viewModel.adoptTab(tab, at: index, transitionInfoOverride: SuppressNavigationTransitionInfo())
+        renderSelectedTab()
+    }
+
+    // Closes this window once its last tab has been torn/merged away, so an
+    // emptied floating receiver doesn't linger.
+    func closeIfEmpty() {
+        guard viewModel?.tabs.isEmpty ?? false else { return }
+        try? close()
+    }
+
     func setupTabDragHint() {
         let hintText = TextBlock()
         hintText.text = MainWindow.tr("TabDragHint")

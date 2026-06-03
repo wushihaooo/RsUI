@@ -73,87 +73,69 @@ extension MainWindow {
 
         guard MainWindow.isTabTearOffMergeEnabled else { return }
 
-        // Source: record which tab is being dragged and expose it via static state for cross-window drop.
-        tabView.tabDragStarting.addHandler { [weak self] _, args in
-            guard let self, let args, args.tab != nil else { return }
-            // args.tab is unreliable here: because TabItems hold TabViewItems
-            // directly (no ItemsSource), it resolves to the first strip item
-            // regardless of which tab is dragged. WinUI selects the pressed tab
-            // before the drag begins, so the selected tab IS the dragged one.
+        // Native tear-out (CanTearOutTabs). The OS owns the drag visuals and the
+        // window-follow animation; these four handlers only move our model (the
+        // MainWindowTab + its decoupled content frame) between windows. The tab in
+        // flight is tracked in MainWindow.pendingTearOut, and the receiver window
+        // is resolved from THERE — args.newWindowId round-trips as 0 in the
+        // Swift/WinRT binding (the put_NewWindowId setter doesn't marshal).
+
+        // (1) A tab is being torn out and needs a window to land in. The framework
+        // over-fires this within one drag (incl. speculative tears it never
+        // commits), so tearOutReceiver() reuses one empty spare instead of
+        // leaking a window per call.
+        tabView.tabTearOutWindowRequested.addHandler { [weak self] _, args in
+            guard let self, let args else { return }
+            // WinUI selects the pressed tab before the tear begins, so the
+            // selected tab is the one being torn out.
             guard let tab = self.viewModel.selectedTab else { return }
-            guard let url = tab.currentPage?.url else { return }
-            // DIAGNOSTIC (temporary): viaArgsIndex should show the buggy 0 while
-            // selectedIndex tracks the real dragged tab — confirms the fix.
-            let viaArgsIndex = (args.tab).flatMap { self.tab(for: $0) }
-                .flatMap { r in self.viewModel.tabs.firstIndex(where: { $0 === r }) }
-            let selectedIndex = self.viewModel.tabs.firstIndex(where: { $0 === tab })
-            log.info("[TabDrag] start viaArgsIndex=\(viaArgsIndex.map(String.init) ?? "nil") selectedIndex=\(selectedIndex.map(String.init) ?? "nil") draggURL=\(url.lastPathComponent)")
-            self.draggingTabForDrop = tab
-            MainWindow.activeDrag = DragState(sourceWindowID: ObjectIdentifier(self), tab: tab, tabURL: url)
+            let receiver = MainWindow.tearOutReceiver()
+            MainWindow.pendingTearOut = MainWindow.PendingTearOut(
+                tab: tab, holder: self, receiver: receiver
+            )
+            args.newWindowId = receiver.appWindow.id
+            log.info("[TearOut] windowRequested receiver=\(receiver.appWindow.id.value)")
         }
 
-        // Source: flag that the tab was physically dropped outside (vs drag cancelled by Escape).
-        tabView.tabDroppedOutside.addHandler { [weak self] _, _ in
-            log.info("[TabDrag] droppedOutside")
-            self?.dragDroppedOutside = true
+        // (2) Commit the tear: move the torn tab from its holder into the
+        // receiver. Once moved, the spare is no longer empty, so release it.
+        tabView.tabTearOutRequested.addHandler { _, _ in
+            guard var pending = MainWindow.pendingTearOut,
+                  pending.holder !== pending.receiver else { return }
+            log.info("[TearOut] tearOutRequested -> receiver")
+            pending.holder.releaseTab(pending.tab)
+            pending.receiver.adoptTornTab(pending.tab)
+            pending.holder = pending.receiver
+            MainWindow.pendingTearOut = pending
+            MainWindow.spareReceiver = nil
         }
 
-        // Source: decide outcome once drag completes.
-        tabView.tabDragCompleted.addHandler { [weak self] _, args in
-            guard let self, let args else { return }
-            let wasDroppedOutside = self.dragDroppedOutside
-            let didMerge = MainWindow.dragMergedIntoOtherWindow
-            // DIAGNOSTIC (temporary): record the inputs that pick the outcome.
-            let draggingIndex = self.viewModel.tabs.firstIndex(where: { $0 === self.draggingTabForDrop })
-            log.info("[TabDrag] completed dropResult=\(args.dropResult.rawValue) wasDroppedOutside=\(wasDroppedOutside) didMerge=\(didMerge) draggingIndex=\(draggingIndex.map(String.init) ?? "nil") draggingURL=\(self.draggingTabForDrop?.currentPage?.url.lastPathComponent ?? "nil") count=\(self.viewModel.tabs.count)")
-            defer {
-                self.dragDroppedOutside = false
-                self.draggingTabForDrop = nil
-                MainWindow.activeDrag = nil
-                MainWindow.dragMergedIntoOtherWindow = false
+        // (3) A torn tab from another window is dragged over this strip — accept.
+        tabView.externalTornOutTabsDropping.addHandler { _, args in
+            guard let args, MainWindow.pendingTearOut != nil else { return }
+            args.allowDrop = true
+        }
+
+        // (4) Merge: pull the torn tab from its current holder into this window at
+        // dropIndex, then discard the now-empty floating receiver.
+        tabView.externalTornOutTabsDropped.addHandler { [weak self] _, args in
+            guard let self, let args, let pending = MainWindow.pendingTearOut else { return }
+            let index = Int(args.dropIndex)
+            log.info("[TearOut] dropped(merge) index=\(index)")
+            pending.holder.releaseTab(pending.tab)
+            self.adoptTornTab(pending.tab, at: index)
+            if pending.receiver !== self {
+                pending.receiver.closeIfEmpty()
             }
-            guard let tab = self.draggingTabForDrop else { return }
-            guard self.viewModel.tabs.count > 1 else { return }
-            guard self.viewModel.tabs.contains(where: { $0 === tab }) else { return }
-
-            if args.dropResult == .none {
-                guard wasDroppedOutside else { return }
-                log.info("[TabDrag] -> tearOff url=\(tab.currentPage?.url.lastPathComponent ?? "nil")")
-                // Transfer the tab object itself (not just its URL) so its
-                // back/forward history moves with it to the new window.
-                self.viewModel.detachTab(tab)
-                self.renderSelectedTab()
-                MainWindow.openDetachedWindow(transferring: tab)
-            } else if didMerge {
-                log.info("[TabDrag] -> merge (detach source) url=\(tab.currentPage?.url.lastPathComponent ?? "nil")")
-                // The destination window already adopted this tab object in its
-                // drop handler, so just detach it here (don't close/destroy it).
-                self.viewModel.detachTab(tab)
-                self.renderSelectedTab()
-            } else {
-                // In-window reorder: WinUI already moved the strip item, so just
-                // persist the new order to the view model.
-                log.info("[TabDrag] -> reorder")
-                self.syncTabOrderFromStrip()
-            }
+            MainWindow.pendingTearOut = nil
         }
 
-        // Destination: accept tab drops from other windows' TabViews.
-        tabView.dragOver.addHandler { [weak self] _, args in
-            guard let self, let args else { return }
-            guard let drag = MainWindow.activeDrag, drag.sourceWindowID != ObjectIdentifier(self) else { return }
-            args.acceptedOperation = .move
-        }
-        tabView.drop.addHandler { [weak self] _, _ in
-            guard let self else { return }
-            guard let drag = MainWindow.activeDrag, drag.sourceWindowID != ObjectIdentifier(self) else { return }
-            log.info("[TabDrag] drop(dest) acceptURL=\(drag.tabURL.lastPathComponent)")
-            MainWindow.dragMergedIntoOtherWindow = true
-            // Adopt the dragged tab object itself so its back/forward history
-            // survives the merge. The source window detaches it in its own
-            // tabDragCompleted handler, which fires right after this returns.
-            self.viewModel.adoptTab(drag.tab, transitionInfoOverride: SuppressNavigationTransitionInfo())
-            self.renderSelectedTab()
+        // In-window reorder has no per-event hook with native tear-out: the
+        // framework moves the strip item directly. Persist the new order to the
+        // model when a drag ends (harmless no-op after a tear-off, where the
+        // strip and model already match).
+        tabView.tabDragCompleted.addHandler { [weak self] _, _ in
+            self?.syncTabOrderFromStrip()
         }
     }
 
